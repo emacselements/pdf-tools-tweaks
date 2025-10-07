@@ -1,5 +1,4 @@
 ;; -*- lexical-binding: t; -*-
-;; Author: Raoul Comninos
 ;; Export PDF annotations to org-mode format
 
 (defun pdf-export-annotations-to-file (&optional output-file)
