@@ -92,4 +92,4 @@ You can further adjust keybindings, annotation colors, and other settings in the
 
 ## License
 This file is provided as-is, without warranty. You may use, modify, and distribute it freely.
-# pdf-tools-tweaks
+
