@@ -115,58 +115,12 @@ Also trims trailing whitespace before saving."
     (goto-char (point-max))))
 
 ;; Add hook to position cursor at end when edit buffer is set up
-(advice-add 'pdf-annot-edit-contents-noselect :after
+(advice-add 'pdf-annot-edit-contents-noselect :after 
             (lambda (&rest _args)
-              (with-current-buffer (get-buffer-create
-                                   (format "*Edit Annotation %s*"
+              (with-current-buffer (get-buffer-create 
+                                   (format "*Edit Annotation %s*" 
                                           (buffer-name (pdf-annot-get-buffer pdf-annot-edit-contents--annotation))))
                 (goto-char (point-max)))))
-
-;; Advice to dynamically set window height based on annotation content
-(defun pdf-annot-count-visual-lines (buffer window-width)
-  "Count visual lines in BUFFER accounting for line wrapping at WINDOW-WIDTH."
-  (with-current-buffer buffer
-    (let ((total-lines 0))
-      (save-excursion
-        (goto-char (point-min))
-        (while (not (eobp))
-          (let* ((line-end (line-end-position))
-                 (line-text (buffer-substring-no-properties (point) line-end))
-                 (line-length (length line-text)))
-            ;; Account for wrapping: each window-width chars = 1 visual line
-            ;; Subtract 2 for margins/fringe
-            (setq total-lines (+ total-lines
-                                (max 1 (ceiling (/ (float line-length)
-                                                   (float (- window-width 2)))))))
-            (forward-line 1))))
-      total-lines)))
-
-(defun pdf-annot-dynamic-window-height (a)
-  "Replacement for `pdf-annot-edit-contents' with dynamic window height."
-  ;; First create the buffer (but don't display it yet)
-  (let* ((buffer (pdf-annot-edit-contents-noselect a))
-         ;; Use the PDF window width as reference for wrapping calculation
-         (pdf-window-width (window-width (selected-window)))
-         (visual-lines (pdf-annot-count-visual-lines buffer pdf-window-width))
-         ;; Add extra lines: 3 for whitespace + 1 for header = 4 total
-         (desired-height (max 8 (+ visual-lines 4)))
-         ;; Cap at reasonable maximum (e.g., 25 lines)
-         (target-height (min 25 desired-height))
-         (win (select-window
-               (display-buffer
-                buffer
-                `((display-buffer-reuse-window
-                   display-buffer-split-below-and-attach)
-                  (inhibit-same-window . t)
-                  (window-height . ,target-height))))))
-    ;; After window is displayed, ensure it shows content from the top
-    (with-selected-window win
-      (goto-char (point-min))
-      (set-window-start win (point-min) t)
-      (goto-char (point-max)))
-    win))
-
-(advice-add 'pdf-annot-edit-contents :override #'pdf-annot-dynamic-window-height)
 
 ;; Override both functions
 (advice-add 'pdf-annot-edit-contents-commit :override 
@@ -298,21 +252,6 @@ Uses squiggly underline with orange color to create a dashed pattern."
   ;; Add keybindings for annotations
   (define-key pdf-view-mode-map (kbd "a") 'pdf-annot-add-mark-markup-annotation)
   (define-key pdf-view-mode-map (kbd "b") 'pdf-annot-add-box-markup-annotation))
-
-;;;;;;;;;;;;;;;;
-
-;; Optional: Trim trailing whitespace when saving annotations
-;; Comment out the advice below to disable automatic whitespace trimming
-
-(advice-add 'pdf-annot-edit-contents-finalize :before
-            (lambda (&optional save &rest args)
-              (when save
-                ;; Trim trailing whitespace before saving
-                (save-excursion
-                  (goto-char (point-max))
-                  (while (and (> (point) (point-min))
-                              (memq (char-before) '(?\s ?\t ?\n ?\r)))
-                    (delete-char -1))))))
 
 ;;;;;;;;;;;;;;;;
 

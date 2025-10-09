@@ -13,11 +13,7 @@
          (output (or output-file 
                      (read-file-name "Save annotations to: " nil default-output nil 
                                      (file-name-nondirectory default-output))))
-         (all-annotations (pdf-annot-getannots))
-         ;; Filter to only include 'text' type annotations
-         (annotations (cl-remove-if-not
-                       (lambda (annot) (eq (pdf-annot-get annot 'type) 'text))
-                       all-annotations))
+         (annotations (pdf-annot-getannots))
          (pdf-title (file-name-sans-extension (file-name-nondirectory pdf-file))))
     
     (with-temp-file output
