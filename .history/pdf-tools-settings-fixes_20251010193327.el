@@ -174,13 +174,17 @@
 ;;       (goto-char (point-max)))
 ;;     win))
 
-;; 3.5 Advices (override/around)
-(advice-add 'pdf-annot-edit-contents-commit       :override #'pdf-annot-edit-contents-commit-with-retry)
-(advice-add 'pdf-annot-delete                     :override #'pdf-annot-delete-with-retry)
+;; ;; 3.5 Advices (override/around)
+;; (advice-add 'pdf-annot-edit-contents              :override #'pdf-annot-dynamic-window-height)
+;; (advice-add 'pdf-annot-edit-contents-commit       :override #'pdf-annot-edit-contents-commit-with-retry)
+;; (advice-add 'pdf-annot-delete                     :override #'pdf-annot-delete-with-retry)
+;; (advice-add 'pdf-annot-edit-contents-finalize     :around
+;;             (lambda (orig-fun &optional save &rest args)
+;;               (apply orig-fun save args)))
 
-;; Cleanup stray old advice name if present
-(advice-remove 'pdf-annot-edit-contents-save-annotation
-               #'pdf-annot-edit-contents-save-annotation-fixed)
+;; ;; Cleanup stray old advice name if present
+;; (advice-remove 'pdf-annot-edit-contents-save-annotation
+;;                #'pdf-annot-edit-contents-save-annotation-fixed)
 
 
 ;;;; 4) Save Last Place in PDFs -------------------------------------------------
