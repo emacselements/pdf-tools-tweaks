@@ -9,7 +9,6 @@
 ;; - Keybindings
 ;; - Robust annotation edit/delete (handles stale IDs)
 ;; - Better edit buffer UX (cursor position + dynamic height)
-;; - Smart quit with save prompt for unsaved changes
 ;; - Save-place integration
 ;; - Make invisible text (3 Tr) visible
 ;; - Clipboard timeout tweak
@@ -52,6 +51,9 @@
 (define-key pdf-view-mode-map (kbd "~")   #'pdf-annot-add-squiggly-markup-annotation)
 (define-key pdf-view-mode-map (kbd "u")   #'pdf-annot-add-underline-markup-annotation)
 (define-key pdf-view-mode-map (kbd "s")   #'pdf-annot-add-strikeout-markup-annotation)
+
+;; Smart quit with save prompt
+(define-key pdf-view-mode-map (kbd "Q")   #'pdf-view-quit-window-with-save-prompt)
 
 
 ;;;; 3) Robust Annotation Editing (stale ID fix + UX) ---------------------------
@@ -183,70 +185,7 @@
 (advice-remove 'pdf-annot-edit-contents-save-annotation
                #'pdf-annot-edit-contents-save-annotation-fixed)
 
-
-;;;; 3.6) Smart Quit with Save Prompt for Unsaved Changes ----------------------
-
-(defun pdf-view-quit-window-with-save-prompt (&optional kill)
-  "Quit the PDF window, prompting to save unsaved changes if any exist.
-With prefix argument KILL, kill the buffer instead of just burying it."
-  (interactive "P")
-  (let ((buffer (current-buffer)))
-    (if (buffer-modified-p buffer)
-        (let ((choice (read-char-choice
-                       (format "PDF has unsaved changes. [s]ave, [d]iscard, or [c]ancel? ")
-                       '(?s ?d ?c))))
-          (cond
-           ((eq choice ?s)  ; Save
-            (condition-case err
-                (progn
-                  (save-buffer)
-                  (message "Changes saved.")
-                  (quit-window kill))
-              (error
-               (message "Failed to save changes: %s" (error-message-string err)))))
-           ((eq choice ?d)  ; Discard
-            (set-buffer-modified-p nil)
-            (message "Changes discarded.")
-            (quit-window kill))
-           ((eq choice ?c)  ; Cancel
-            (message "Quit cancelled."))))
-      ;; No unsaved changes, quit normally
-      (quit-window kill))))
-
-;; Bind the smart quit function to Q key  
-(with-eval-after-load 'pdf-view
-  (define-key pdf-view-mode-map (kbd "Q") #'pdf-view-quit-window-with-save-prompt)
-  ;; Also bind to lowercase q for convenience
-  (define-key pdf-view-mode-map (kbd "q") #'pdf-view-quit-window-with-save-prompt))
-
-;; Alternative approach: advice on quit-window to catch all quit attempts
-(advice-add 'quit-window :around
-            (lambda (orig-fun &optional kill window)
-              "Advice to prompt for saving when quitting PDF buffers with unsaved changes."
-              (if (and (eq major-mode 'pdf-view-mode)
-                       (buffer-modified-p))
-                  (let ((choice (read-char-choice
-                                 "PDF has unsaved changes. [s]ave, [d]iscard, or [c]ancel? "
-                                 '(?s ?d ?c))))
-                    (cond
-                     ((eq choice ?s)  ; Save
-                      (condition-case err
-                          (progn
-                            (save-buffer)
-                            (message "Changes saved.")
-                            (funcall orig-fun kill window))
-                        (error
-                         (message "Failed to save changes: %s" (error-message-string err)))))
-                     ((eq choice ?d)  ; Discard
-                      (set-buffer-modified-p nil)
-                      (message "Changes discarded.")
-                      (funcall orig-fun kill window))
-                     ((eq choice ?c)  ; Cancel
-                      (message "Quit cancelled."))))
-                ;; Not a PDF buffer with changes, or no changes - proceed normally
-                (funcall orig-fun kill window))))
-
-
+
 ;;;; 4) Save Last Place in PDFs -------------------------------------------------
 
 (require 'saveplace-pdf-view) ; external package

@@ -219,33 +219,6 @@ With prefix argument KILL, kill the buffer instead of just burying it."
   ;; Also bind to lowercase q for convenience
   (define-key pdf-view-mode-map (kbd "q") #'pdf-view-quit-window-with-save-prompt))
 
-;; Alternative approach: advice on quit-window to catch all quit attempts
-(advice-add 'quit-window :around
-            (lambda (orig-fun &optional kill window)
-              "Advice to prompt for saving when quitting PDF buffers with unsaved changes."
-              (if (and (eq major-mode 'pdf-view-mode)
-                       (buffer-modified-p))
-                  (let ((choice (read-char-choice
-                                 "PDF has unsaved changes. [s]ave, [d]iscard, or [c]ancel? "
-                                 '(?s ?d ?c))))
-                    (cond
-                     ((eq choice ?s)  ; Save
-                      (condition-case err
-                          (progn
-                            (save-buffer)
-                            (message "Changes saved.")
-                            (funcall orig-fun kill window))
-                        (error
-                         (message "Failed to save changes: %s" (error-message-string err)))))
-                     ((eq choice ?d)  ; Discard
-                      (set-buffer-modified-p nil)
-                      (message "Changes discarded.")
-                      (funcall orig-fun kill window))
-                     ((eq choice ?c)  ; Cancel
-                      (message "Quit cancelled."))))
-                ;; Not a PDF buffer with changes, or no changes - proceed normally
-                (funcall orig-fun kill window))))
-
 
 ;;;; 4) Save Last Place in PDFs -------------------------------------------------
 
