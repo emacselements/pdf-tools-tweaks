@@ -227,34 +227,28 @@ With prefix argument KILL, kill the buffer instead of just burying it."
 (advice-add 'quit-window :around
             (lambda (orig-fun &optional kill window)
               "Advice to prompt for saving when quitting PDF buffers with unsaved changes."
-              (let ((target-buffer (if window
-                                      (window-buffer window)
-                                    (current-buffer))))
-                (if (and (buffer-live-p target-buffer)
-                         (with-current-buffer target-buffer
-                           (and (eq major-mode 'pdf-view-mode)
-                                (buffer-modified-p))))
-                    (with-current-buffer target-buffer
-                      (let ((choice (read-char-choice
-                                     "PDF has unsaved changes. [s]ave, [d]iscard, or [c]ancel? "
-                                     '(?s ?d ?c))))
-                        (cond
-                         ((eq choice ?s)  ; Save
-                          (condition-case err
-                              (progn
-                                (save-buffer)
-                                (message "Changes saved.")
-                                (funcall orig-fun kill window))
-                            (error
-                             (message "Failed to save changes: %s" (error-message-string err)))))
-                         ((eq choice ?d)  ; Discard
-                          (set-buffer-modified-p nil)
-                          (message "Changes discarded.")
-                          (funcall orig-fun kill window))
-                         ((eq choice ?c)  ; Cancel
-                          (message "Quit cancelled.")))))
-                  ;; Not a PDF buffer with changes, or no changes - proceed normally
-                  (funcall orig-fun kill window)))))
+              (if (and (eq major-mode 'pdf-view-mode)
+                       (buffer-modified-p))
+                  (let ((choice (read-char-choice
+                                 "PDF has unsaved changes. [s]ave, [d]iscard, or [c]ancel? "
+                                 '(?s ?d ?c))))
+                    (cond
+                     ((eq choice ?s)  ; Save
+                      (condition-case err
+                          (progn
+                            (save-buffer)
+                            (message "Changes saved.")
+                            (funcall orig-fun kill window))
+                        (error
+                         (message "Failed to save changes: %s" (error-message-string err)))))
+                     ((eq choice ?d)  ; Discard
+                      (set-buffer-modified-p nil)
+                      (message "Changes discarded.")
+                      (funcall orig-fun kill window))
+                     ((eq choice ?c)  ; Cancel
+                      (message "Quit cancelled."))))
+                ;; Not a PDF buffer with changes, or no changes - proceed normally
+                (funcall orig-fun kill window))))
 
 
 ;;;; 4) Save Last Place in PDFs -------------------------------------------------
@@ -342,12 +336,6 @@ With prefix argument KILL, kill the buffer instead of just burying it."
 (defvar pdf-bookmarks-current-file-bookmarks nil
   "List of bookmarks for the current PDF file.")
 
-(defvar pdf-bookmarks-last-accessed nil
-  "The last accessed bookmark name for the current PDF.")
-
-(defvar pdf-bookmarks-previous-accessed nil
-  "The previously accessed bookmark name (for toggling back).")
-
 (defun pdf-bookmarks-ensure-directory ()
   "Ensure the bookmarks storage directory exists."
   (unless (file-directory-p pdf-bookmarks-storage-directory)
@@ -378,18 +366,6 @@ With prefix argument KILL, kill the buffer instead of just burying it."
   (when-let ((bookmark-file (pdf-bookmarks-get-file-path)))
     (with-temp-file bookmark-file
       (prin1 pdf-bookmarks-current-file-bookmarks (current-buffer)))))
-
-(defun pdf-bookmarks-find-at-page (page)
-  "Find the bookmark at PAGE, returning the bookmark entry or nil."
-  (cl-find-if (lambda (bm)
-                (= (plist-get bm :page) page))
-              pdf-bookmarks-current-file-bookmarks))
-
-(defun pdf-bookmarks-format-choice (bookmark)
-  "Format a BOOKMARK as a completion choice string."
-  (format "%s (Page %d)"
-          (plist-get bookmark :name)
-          (plist-get bookmark :page)))
 
 (defun pdf-bookmarks-create ()
   "Create a bookmark at the current page."
@@ -426,63 +402,50 @@ With prefix argument KILL, kill the buffer instead of just burying it."
       (message "Bookmark '%s' created for page %d" bookmark-name current-page))))
 
 (defun pdf-bookmarks-access ()
-  "Access and navigate to a bookmark, defaulting to the previously visited bookmark if available."
+  "Access and navigate to a bookmark."
   (interactive)
 
   (unless (eq major-mode 'pdf-view-mode)
     (error "Not in a PDF buffer"))
 
+  ;; Debug: show what file we're working with
+  (message "Current PDF file: %s" (buffer-file-name))
+  (message "Bookmark file path: %s" (pdf-bookmarks-get-file-path))
+
   ;; Load bookmarks from file
   (pdf-bookmarks-load)
+
+  (message "Loaded %d bookmarks" (length pdf-bookmarks-current-file-bookmarks))
 
   (if (null pdf-bookmarks-current-file-bookmarks)
       (message "No bookmarks found for this PDF")
 
-    (let* ((current-page (pdf-view-current-page))
-           (current-bookmark (pdf-bookmarks-find-at-page current-page))
-           (current-bookmark-name (when current-bookmark
-                                   (plist-get current-bookmark :name)))
-           (bookmark-alist
+    (let* ((bookmark-alist
             (mapcar (lambda (bm)
-                      (cons (pdf-bookmarks-format-choice bm) bm))
+                      (cons (format "%s (Page %d)"
+                                    (plist-get bm :name)
+                                    (plist-get bm :page))
+                            bm))
                     pdf-bookmarks-current-file-bookmarks))
-           ;; Default to PREVIOUS accessed bookmark (where you came from), not current
-           (default-choice (when pdf-bookmarks-previous-accessed
-                            (car (cl-find-if (lambda (choice)
-                                              (string-prefix-p pdf-bookmarks-previous-accessed (car choice)))
-                                            bookmark-alist))))
            (choice-string (completing-read
-                           (if default-choice
-                               (format "Go to bookmark (default %s): " default-choice)
-                             "Go to bookmark: ")
+                           "Go to bookmark: "
                            bookmark-alist
-                           nil t nil nil
-                           default-choice)))
+                           nil t)))
 
       ;; Check if user cancelled or selected empty string
       (when (and choice-string (not (string-empty-p choice-string)))
         (let ((selected-bookmark (cdr (assoc choice-string bookmark-alist))))
           (if selected-bookmark
-              (let ((page (plist-get selected-bookmark :page))
-                    (name (plist-get selected-bookmark :name)))
+              (let ((page (plist-get selected-bookmark :page)))
                 (if (and page (numberp page))
                     (progn
-                      ;; BEFORE navigating, capture where we are now
-                      ;; If we're on a bookmarked page, remember it
-                      (when current-bookmark-name
-                        (setq pdf-bookmarks-previous-accessed pdf-bookmarks-last-accessed)
-                        (setq pdf-bookmarks-last-accessed current-bookmark-name))
-                      ;; Now navigate
                       (pdf-view-goto-page page)
-                      ;; After navigation, update to where we went
-                      (setq pdf-bookmarks-previous-accessed pdf-bookmarks-last-accessed)
-                      (setq pdf-bookmarks-last-accessed name)
                       (message "Navigated to: %s" choice-string))
                   (message "Error: Invalid page number in bookmark: %S" page)))
             (message "Error: Could not find selected bookmark: %s" choice-string)))))))
 
 (defun pdf-bookmarks-delete ()
-  "Delete a bookmark, defaulting to the bookmark at the current page if one exists."
+  "Delete a bookmark."
   (interactive)
   (unless (eq major-mode 'pdf-view-mode)
     (error "Not in a PDF buffer"))
@@ -492,23 +455,20 @@ With prefix argument KILL, kill the buffer instead of just burying it."
   (if (null pdf-bookmarks-current-file-bookmarks)
       (message "No bookmarks found for this PDF")
 
-    (let* ((current-page (pdf-view-current-page))
-           (current-page-bookmark (pdf-bookmarks-find-at-page current-page))
-           (default-choice (when current-page-bookmark
-                            (pdf-bookmarks-format-choice current-page-bookmark)))
-           (bookmark-choices
+    (let* ((bookmark-choices
             (mapcar (lambda (bm)
-                      (pdf-bookmarks-format-choice bm))
+                      (format "%s (Page %d)"
+                              (plist-get bm :name)
+                              (plist-get bm :page)))
                     pdf-bookmarks-current-file-bookmarks))
-           (choice (completing-read
-                    (if default-choice
-                        (format "Delete bookmark (default %s): " default-choice)
-                      "Delete bookmark: ")
-                    bookmark-choices nil t nil nil default-choice))
+           (choice (completing-read "Delete bookmark: " bookmark-choices nil t))
            ;; Find the matching bookmark
            (selected-bookmark
             (cl-find-if (lambda (bm)
-                          (string= choice (pdf-bookmarks-format-choice bm)))
+                          (string= choice
+                                   (format "%s (Page %d)"
+                                           (plist-get bm :name)
+                                           (plist-get bm :page))))
                         pdf-bookmarks-current-file-bookmarks)))
 
       (when selected-bookmark
@@ -516,56 +476,6 @@ With prefix argument KILL, kill the buffer instead of just burying it."
               (cl-remove selected-bookmark pdf-bookmarks-current-file-bookmarks))
         (pdf-bookmarks-save)
         (message "Deleted bookmark: %s" (plist-get selected-bookmark :name))))))
-
-(defun pdf-bookmarks-rename ()
-  "Rename an existing bookmark, defaulting to the bookmark at the current page if one exists.
-If a default exists, go directly to editing the name without requiring RET."
-  (interactive)
-  (unless (eq major-mode 'pdf-view-mode)
-    (error "Not in a PDF buffer"))
-
-  (pdf-bookmarks-load)
-
-  (if (null pdf-bookmarks-current-file-bookmarks)
-      (message "No bookmarks found for this PDF")
-
-    (let* ((current-page (pdf-view-current-page))
-           (current-page-bookmark (pdf-bookmarks-find-at-page current-page))
-           (selected-bookmark
-            (if current-page-bookmark
-                ;; If there's a bookmark on current page, use it directly
-                current-page-bookmark
-              ;; Otherwise, prompt user to select one
-              (let* ((bookmark-choices
-                      (mapcar (lambda (bm)
-                                (pdf-bookmarks-format-choice bm))
-                              pdf-bookmarks-current-file-bookmarks))
-                     (choice (completing-read
-                              "Rename bookmark: "
-                              bookmark-choices nil t)))
-                (cl-find-if (lambda (bm)
-                              (string= choice (pdf-bookmarks-format-choice bm)))
-                            pdf-bookmarks-current-file-bookmarks)))))
-
-      (when selected-bookmark
-        (let* ((old-name (plist-get selected-bookmark :name)))
-          ;; Use minibuffer-with-setup-hook to position cursor at end after insertion
-          (let ((new-name
-                 (minibuffer-with-setup-hook
-                     (lambda () (goto-char (point-max)))
-                   (read-string (format "Rename bookmark '%s' to: " old-name) old-name))))
-          (when (and new-name (not (string-empty-p new-name)))
-            ;; Check if new name already exists
-            (when (cl-find-if (lambda (bm)
-                               (and (string= (plist-get bm :name) new-name)
-                                    (not (eq bm selected-bookmark))))
-                             pdf-bookmarks-current-file-bookmarks)
-              (error "A bookmark with name '%s' already exists" new-name))
-
-            ;; Update the bookmark name
-            (plist-put selected-bookmark :name new-name)
-            (pdf-bookmarks-save)
-            (message "Renamed bookmark from '%s' to '%s'" old-name new-name))))))))
 
 (defun pdf-bookmarks-delete-all ()
   "Delete all bookmarks for the current PDF."
@@ -622,8 +532,7 @@ If a default exists, go directly to editing the name without requiring RET."
   ;; Override the pdf-history-minor-mode-map bindings
   (define-key pdf-history-minor-mode-map (kbd "b") #'pdf-bookmarks-create)
   (define-key pdf-history-minor-mode-map (kbd "B") #'pdf-bookmarks-access)
-  (define-key pdf-history-minor-mode-map (kbd "M-d") #'pdf-bookmarks-delete)
-  (define-key pdf-history-minor-mode-map (kbd "M-n") #'pdf-bookmarks-rename))
+  (define-key pdf-history-minor-mode-map (kbd "M-d") #'pdf-bookmarks-delete))
 
 
 ;;;; 10) Optional: Trim trailing whitespace on annot save -----------------------

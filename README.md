@@ -25,12 +25,13 @@ Custom fixes, enhancements, and usability tweaks for the [pdf-tools](https://git
 ---
 ## Exporting Annotations (pdf-export-annotations.el)
 
-This file provides commands to export PDF annotations to org-mode format, grouped by page and type, with icons and links back to the source PDF. It supports exporting all annotations or filtering by type (highlight, note, etc.).
+This file provides commands to export PDF annotations to both org-mode and Markdown formats, grouped by page and type, with icons and links back to the source PDF. It supports exporting all annotations or filtering by type (highlight, note, etc.).
 
 ### Features
-- Export all annotations in the current PDF to an org file: `M-x pdf-export-annotations-to-file` or `C-c C-e` in `pdf-view-mode`.
+- Export all annotations to org-mode: `M-x org-pdf-export-annotations-to-file` or `C-c C-e` in `pdf-view-mode`.
+- Export all annotations to Markdown: `M-x markdown-pdf-export-annotations-to-file` or `C-c C-m` in `pdf-view-mode`.
 - Export only a specific type of annotation: `M-x pdf-export-annotations-by-type` or `C-c C-t`.
-- Output includes org headers, page grouping, icons, selected text, and annotation notes.
+- Output includes headers, page grouping, icons, selected text, and annotation notes.
 
 ### Usage
 1. Ensure `pdf-export-annotations.el` is in the same directory as your other tweaks.
@@ -43,7 +44,11 @@ This file provides commands to export PDF annotations to org-mode format, groupe
 
 - **Keybinding Customization:**
    - Remaps navigation and annotation keys for more efficient PDF reading and editing.
-      - `gg` → first page, `G` → last page, `e` → goto page, `d` → delete annotation, `h`/`~`/`u`/`s` → highlight, squiggly, underline, strikeout.
+      - `gg` → first page, `G` → last page, `e` → goto page, `r` → revert buffer
+      - `d` → delete annotation, `h`/`~`/`u`/`s` → highlight, squiggly, underline, strikeout
+      - `,` → Mark (purple highlight), `a` → Box (orange squiggly)
+      - `b` → create bookmark, `B` → access bookmarks, `M-d` → delete bookmark, `M-n` → rename bookmark
+      - `C-c C-e` → export to org-mode, `C-c C-m` → export to Markdown, `C-c C-t` → export by type
       - Removes or disables some default bindings for clarity.
 
 - **Annotation Bug Fixes:**
@@ -54,8 +59,8 @@ This file provides commands to export PDF annotations to org-mode format, groupe
 
 - **Custom Annotation Types:**
    - Adds new annotation types:
-      - **Mark**: Purple highlight for marking text (`m` key).
-      - **Box**: Orange dashed underline for marking regions (`b` key).
+      - **Mark**: Purple highlight for marking text (`,` key).
+      - **Box**: Orange squiggly underline for marking regions (`a` key).
 
 - **PDF Viewing Improvements:**
    - Disables continuous scrolling by default.
@@ -75,6 +80,15 @@ This file provides commands to export PDF annotations to org-mode format, groupe
 - **Smart Quit with Save Prompt:**
    - When quitting a PDF buffer (using `q`, `Q`, or any quit-window command), if there are unsaved changes, you are prompted to save, discard, or cancel. This prevents accidental loss of annotation edits or other changes.
    - Works for all quit methods, including keybindings and window management commands.
+
+- **PDF Bookmarks System:**
+   - Create, access, rename, and delete bookmarks for quick navigation within PDFs.
+   - Bookmarks are stored locally in `~/.emacs.d/pdf-bookmarks/` as `.bookmarks` files (separate from the PDF).
+   - **Create bookmark** (`b`): Save current page with a custom name.
+   - **Access bookmark** (`B`): Navigate to saved bookmarks via completion. Defaults to previously visited bookmark for easy toggling.
+   - **Delete bookmark** (`M-d`): Remove a bookmark. Defaults to bookmark on current page if one exists.
+   - **Rename bookmark** (`M-n`): Rename an existing bookmark. Defaults to bookmark on current page if one exists, skipping selection and going directly to rename prompt.
+   - Smart defaults make navigation intuitive: press `B` twice to toggle between two locations.
 
 ## Usage
 1. Download or copy `pdf-tools-settings-fixes.el` to your Emacs configuration directory (e.g., `~/.emacs.d/lisp/`).
