@@ -87,7 +87,8 @@
     
     (message "Annotations exported to: %s" output)
     (when (y-or-n-p "Open exported file? ")
-      (find-file output))))
+      (find-file output)
+      (goto-char (point-max)))))
 
 (defun pdf-export-annotations-by-type (annotation-type &optional output-file)
   "Export specific type of annotations (highlight, note, etc.) to org-mode file."
@@ -180,7 +181,8 @@
     
     (message "%s annotations exported to: %s" (capitalize (symbol-name annotation-type)) output)
     (when (y-or-n-p "Open exported file? ")
-      (find-file output))))
+      (find-file output)
+      (goto-char (point-max)))))
 
 (defun markdown-pdf-export-annotations-to-file (&optional output-file)
   "Export all annotations from current PDF to a Markdown file."
@@ -266,7 +268,8 @@
 
     (message "Annotations exported to: %s" output)
     (when (y-or-n-p "Open exported file? ")
-      (find-file output))))
+      (find-file output)
+      (goto-char (point-max)))))
 
 ;; Convenient keybinding
 (define-key pdf-view-mode-map (kbd "C-c C-e") 'org-pdf-export-annotations-to-file)
