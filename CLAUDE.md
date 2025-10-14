@@ -41,8 +41,12 @@ This file is organized into 10 distinct sections (clearly marked with section he
      - Pre-fills current name with cursor at end for easy editing
    - `pdf-bookmarks-list` - Debug function to list all bookmarks
    - Bookmarks stored in `~/.emacs.d/pdf-bookmarks/` as `.bookmarks` files (separate from PDF)
-   - **Important**: Bookmarks are NOT stored in the PDF itself - they're local files based on PDF filename
-   - If PDF is renamed/moved, bookmarks will be orphaned (filename-based lookup)
+   - **Important**: Bookmarks are NOT stored in the PDF itself - they're local files
+   - **Hash-based storage**: Bookmarks are identified by PDF content hash (SHA-256 of first 10MB)
+     - This makes bookmarks robust across file moves and renames
+     - Automatically migrates old filename-based bookmarks to hash-based system on first load
+     - Old filename-based bookmark files are preserved during migration (not deleted)
+   - `pdf-bookmarks-get-pdf-hash` - Calculates stable hash for bookmark identification
    - Keybindings set in `with-eval-after-load 'pdf-history` (lines 573-579) to override pdf-history's default bindings
 10. **Trailing Whitespace Trim** - Optional advice for cleaning annotation content
     - Can be disabled by commenting out the advice

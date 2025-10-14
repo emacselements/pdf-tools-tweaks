@@ -353,25 +353,78 @@ With prefix argument KILL, kill the buffer instead of just burying it."
   (unless (file-directory-p pdf-bookmarks-storage-directory)
     (make-directory pdf-bookmarks-storage-directory t)))
 
+(defun pdf-bookmarks-get-pdf-hash ()
+  "Calculate a hash of the PDF file content for stable bookmark identification.
+Uses the first 10MB of the file to avoid reading huge files entirely."
+  (when-let ((pdf-file (buffer-file-name)))
+    (when (file-exists-p pdf-file)
+      (with-temp-buffer
+        (set-buffer-multibyte nil)
+        ;; Read first 10MB or entire file if smaller
+        (insert-file-contents-literally pdf-file nil 0 (* 10 1024 1024))
+        (secure-hash 'sha256 (current-buffer))))))
+
 (defun pdf-bookmarks-get-file-path ()
-  "Get the bookmark file path for the current PDF."
+  "Get the bookmark file path for the current PDF.
+Uses content-based hash for robust identification across moves/renames.
+Falls back to filename-based lookup for backward compatibility with existing bookmarks."
   (when-let ((pdf-file (buffer-file-name)))
     (pdf-bookmarks-ensure-directory)
-    (expand-file-name 
-     (concat (file-name-base pdf-file) ".bookmarks")
-     pdf-bookmarks-storage-directory)))
+    (let* ((hash (pdf-bookmarks-get-pdf-hash))
+           (hash-based-path (when hash
+                             (expand-file-name
+                              (concat hash ".bookmarks")
+                              pdf-bookmarks-storage-directory)))
+           (filename-based-path (expand-file-name
+                                (concat (file-name-base pdf-file) ".bookmarks")
+                                pdf-bookmarks-storage-directory)))
+      ;; Return hash-based path if available, otherwise filename-based
+      (or hash-based-path filename-based-path))))
 
 (defun pdf-bookmarks-load ()
-  "Load bookmarks for the current PDF file."
-  (when-let ((bookmark-file (pdf-bookmarks-get-file-path)))
-    (setq pdf-bookmarks-current-file-bookmarks
-          (if (file-exists-p bookmark-file)
+  "Load bookmarks for the current PDF file.
+Automatically migrates old filename-based bookmarks to hash-based system."
+  (when-let ((pdf-file (buffer-file-name)))
+    (pdf-bookmarks-ensure-directory)
+    (let* ((hash (pdf-bookmarks-get-pdf-hash))
+           (hash-based-path (when hash
+                             (expand-file-name
+                              (concat hash ".bookmarks")
+                              pdf-bookmarks-storage-directory)))
+           (filename-based-path (expand-file-name
+                                (concat (file-name-base pdf-file) ".bookmarks")
+                                pdf-bookmarks-storage-directory))
+           (bookmarks nil))
+
+      ;; Try to load from hash-based file first
+      (when (and hash-based-path (file-exists-p hash-based-path))
+        (setq bookmarks
               (condition-case nil
                   (with-temp-buffer
-                    (insert-file-contents bookmark-file)
+                    (insert-file-contents hash-based-path)
                     (read (current-buffer)))
-                (error nil))
-            nil))))
+                (error nil))))
+
+      ;; If no hash-based bookmarks found, try old filename-based system
+      (when (and (null bookmarks) (file-exists-p filename-based-path))
+        (setq bookmarks
+              (condition-case nil
+                  (with-temp-buffer
+                    (insert-file-contents filename-based-path)
+                    (read (current-buffer)))
+                (error nil)))
+
+        ;; Migrate: if we found old bookmarks and can create hash-based file, migrate them
+        (when (and bookmarks hash-based-path)
+          (with-temp-file hash-based-path
+            (prin1 bookmarks (current-buffer)))
+          (message "Migrated bookmarks for '%s' to hash-based storage"
+                   (file-name-nondirectory pdf-file))
+          ;; Optionally delete old file after successful migration
+          ;; (delete-file filename-based-path)
+          ))
+
+      (setq pdf-bookmarks-current-file-bookmarks bookmarks))))
 
 (defun pdf-bookmarks-save ()
   "Save bookmarks for the current PDF file."
