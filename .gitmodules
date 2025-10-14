@@ -1,0 +1,3 @@
+[submodule "reference/pdf-tools"]
+	path = reference/pdf-tools
+	url = https://github.com/vedang/pdf-tools.git

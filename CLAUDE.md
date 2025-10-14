@@ -182,6 +182,17 @@ Active advice in the codebase:
 
 When modifying advice, always check if old advice needs removal first (see cleanup pattern at line 185-187).
 
-## When making modifications always check PDF-Tools code first. On my system this can be found at:
+## PDF-Tools Source Code Reference
 
-/home/yal/.emacs.d/elpa/pdf-tools-20240429.407
+**IMPORTANT**: When making modifications, always check the actual pdf-tools implementation first instead of guessing.
+
+The pdf-tools source code is available in this repository as a git submodule at:
+- `reference/pdf-tools/` - The official pdf-tools repository
+
+Key files to reference:
+- `reference/pdf-tools/lisp/pdf-annot.el` - Annotation functions
+- `reference/pdf-tools/lisp/pdf-view.el` - PDF viewing functions
+- `reference/pdf-tools/lisp/pdf-history.el` - Navigation history
+
+The runtime pdf-tools package used by Emacs is installed at:
+- `~/.emacs.d/elpa/pdf-tools-<version>/` (version changes with updates)
