@@ -28,27 +28,7 @@ This file is organized into 10 distinct sections (clearly marked with section he
 8. **Custom Annotation Types** - "Mark" (purple highlight) and "Box" (orange squiggly) annotations
    - Defined with `defcustom` for color customization (`pdf-annot-mark-color` and `pdf-annot-box-color`)
    - Bound to `,` (mark) and `a` (box) keys in `with-eval-after-load 'pdf-annot`
-9. **PDF Bookmarks System** - Custom bookmark navigation for PDFs
-   - `pdf-bookmarks-create` - Create bookmark at current page (bound to `b`)
-   - `pdf-bookmarks-access` - Navigate to saved bookmarks via completion (bound to `B`)
-     - Defaults to previously visited bookmark for easy toggling between two locations
-     - Remembers current location when on a bookmarked page before navigating
-   - `pdf-bookmarks-delete` - Delete a bookmark (bound to `M-d`)
-     - Defaults to bookmark on current page if one exists
-   - `pdf-bookmarks-rename` - Rename an existing bookmark (bound to `M-n`)
-     - Defaults to bookmark on current page if one exists
-     - Skips completion menu and goes directly to rename prompt when on a bookmarked page
-     - Pre-fills current name with cursor at end for easy editing
-   - `pdf-bookmarks-list` - Debug function to list all bookmarks
-   - Bookmarks stored in `~/.emacs.d/pdf-bookmarks/` as `.bookmarks` files (separate from PDF)
-   - **Important**: Bookmarks are NOT stored in the PDF itself - they're local files
-   - **Hash-based storage**: Bookmarks are identified by PDF content hash (SHA-256 of first 10MB)
-     - This makes bookmarks robust across file moves and renames
-     - Automatically migrates old filename-based bookmarks to hash-based system on first load
-     - Old filename-based bookmark files are preserved during migration (not deleted)
-   - `pdf-bookmarks-get-pdf-hash` - Calculates stable hash for bookmark identification
-   - Keybindings set in `with-eval-after-load 'pdf-history` (lines 573-579) to override pdf-history's default bindings
-10. **Trailing Whitespace Trim** - Optional advice for cleaning annotation content
+9. **Trailing Whitespace Trim** - Optional advice for cleaning annotation content
     - Can be disabled by commenting out the advice
 
 ### Key Technical Pattern: Stale Annotation ID Handling
@@ -139,12 +119,6 @@ Annotation operations:
 - `a` - Box (custom orange squiggly)
 - `d` - Delete annotation
 
-Bookmark operations:
-- `b` - Create bookmark at current page
-- `B` - Access/navigate to bookmarks (defaults to previously visited bookmark for toggling)
-- `M-d` - Delete bookmark (defaults to current page's bookmark)
-- `M-n` - Rename bookmark (defaults to current page's bookmark, skips to rename if on bookmarked page)
-
 Export operations:
 - `C-c C-e` - Export all annotations to org-mode
 - `C-c C-m` - Export all annotations to Markdown
@@ -152,7 +126,6 @@ Export operations:
 
 **Important keybinding notes:**
 - The `g` key is unbound first (line 43) to allow the `g g` sequence
-- Bookmark bindings (`b`, `B`) are set in `with-eval-after-load 'pdf-view` (line 512-514) to override pdf-history's default `B` binding for `pdf-history-backward`
 - Custom annotation keys (`,`, `a`) are set in `with-eval-after-load 'pdf-annot` (line 325-326)
 
 ### Commented Code

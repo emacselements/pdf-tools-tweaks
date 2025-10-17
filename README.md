@@ -45,9 +45,9 @@ This file provides commands to export PDF annotations to both org-mode and Markd
 - **Keybinding Customization:**
    - Remaps navigation and annotation keys for more efficient PDF reading and editing.
       - `gg` → first page, `G` → last page, `e` → goto page, `r` → revert buffer
-      - `d` → delete annotation, `h`/`~`/`u`/`s` → highlight, squiggly, underline, strikeout
-      - `,` → Mark (purple highlight), `a` → Box (orange squiggly)
-      - `b` → create bookmark, `B` → access bookmarks, `M-d` → delete bookmark, `M-n` → rename bookmark
+      - `d` → delete annotation
+      - **Standard highlights:** `h` → yellow highlight, `~` → squiggly underline, `u` → underline, `s` → strikeout
+      - **Custom highlights:** `,` → Mark (purple highlight), `a` → Box (orange squiggly), `.` → Green highlight
       - `C-c C-e` → export to org-mode, `C-c C-m` → export to Markdown, `C-c C-t` → export by type
       - Removes or disables some default bindings for clarity.
 
@@ -58,9 +58,10 @@ This file provides commands to export PDF annotations to both org-mode and Markd
       - Ensures the cursor is positioned at the end of the annotation text when editing starts.
 
 - **Custom Annotation Types:**
-   - Adds new annotation types:
+   - Adds new annotation types with customizable colors:
       - **Mark**: Purple highlight for marking text (`,` key).
       - **Box**: Orange squiggly underline for marking regions (`a` key).
+      - **Green**: Green highlight for marking text (`.` key).
 
 - **PDF Viewing Improvements:**
    - Disables continuous scrolling by default.
@@ -74,21 +75,9 @@ This file provides commands to export PDF annotations to both org-mode and Markd
 - **Clipboard Timeout Fix:**
    - Increases X selection timeout to avoid clipboard errors with large selections.
 
-- **PDF Text Selection Visibility Fix:**
-   - Provides a command (`my-fix-pdf-selection`) to patch PDFs that use invisible text ("3 Tr" rendering mode), making hidden or copy-protected text visible and selectable in Emacs. Requires `qpdf`.
-
 - **Smart Quit with Save Prompt:**
    - When quitting a PDF buffer (using `q`, `Q`, or any quit-window command), if there are unsaved changes, you are prompted to save, discard, or cancel. This prevents accidental loss of annotation edits or other changes.
    - Works for all quit methods, including keybindings and window management commands.
-
-- **PDF Bookmarks System:**
-   - Create, access, rename, and delete bookmarks for quick navigation within PDFs.
-   - Bookmarks are stored locally in `~/.emacs.d/pdf-bookmarks/` as `.bookmarks` files (separate from the PDF).
-   - **Create bookmark** (`b`): Save current page with a custom name.
-   - **Access bookmark** (`B`): Navigate to saved bookmarks via completion. Defaults to previously visited bookmark for easy toggling.
-   - **Delete bookmark** (`M-d`): Remove a bookmark. Defaults to bookmark on current page if one exists.
-   - **Rename bookmark** (`M-n`): Rename an existing bookmark. Defaults to bookmark on current page if one exists, skipping selection and going directly to rename prompt.
-   - Smart defaults make navigation intuitive: press `B` twice to toggle between two locations.
 
 ## Usage
 1. Download or copy `pdf-tools-settings-fixes.el` to your Emacs configuration directory (e.g., `~/.emacs.d/lisp/`).
