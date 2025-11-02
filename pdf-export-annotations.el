@@ -14,15 +14,9 @@
                      (read-file-name "Save annotations to: " nil default-output nil
                                      (file-name-nondirectory default-output))))
          (all-annotations (pdf-annot-getannots))
-         ;; Filter to include 'text' type annotations and 'highlight' annotations with notes
+         ;; Filter to only include 'text' type annotations
          (annotations (cl-remove-if-not
-                       (lambda (annot)
-                         (let ((type (pdf-annot-get annot 'type))
-                               (contents (pdf-annot-get annot 'contents)))
-                           (or (eq type 'text)
-                               (and (eq type 'highlight)
-                                    contents
-                                    (not (string-empty-p contents))))))
+                       (lambda (annot) (eq (pdf-annot-get annot 'type) 'text))
                        all-annotations))
          (pdf-title (file-name-sans-extension (file-name-nondirectory pdf-file))))
     
@@ -70,44 +64,24 @@
                                     (t "📌"))))
 
                     ;; Try to get selected text for markup annotations
-                    ;; markup-edges is a list of edge lists (for multi-line selections)
-                    ;; We need to get text for each edge group and concatenate
                     (when markup-edges
-                      (condition-case err
-                          (with-current-buffer (find-file-noselect pdf-file)
-                            (setq selected-text
-                                  (mapconcat
-                                   (lambda (edges)
-                                     (pdf-info-gettext page edges 'word))
-                                   markup-edges
-                                   " ")))
-                        (error
-                         (message "Could not extract highlighted text: %s" (error-message-string err))
-                         (setq selected-text ""))))
+                      (condition-case nil
+                          (setq selected-text (pdf-info-gettext page markup-edges))
+                        (error (setq selected-text "[Could not extract text]"))))
 
-                    ;; For highlights with notes, use highlighted text as header
-                    (if (and (eq type 'highlight) contents (not (string-empty-p contents)))
-                        (progn
-                          ;; Use highlighted text as the header/title if extraction succeeded
-                          (if (and selected-text (not (string-empty-p selected-text)))
-                              (insert (format "*%s %s*\n" type-icon (string-trim selected-text)))
-                            (insert (format "*%s Highlight*\n" type-icon)))
-                          ;; Note content follows
-                          (insert (format "%s\n" contents)))
-                      ;; For regular text notes, use original format
-                      (progn
-                        (insert (format "*%s %s*" type-icon (capitalize (symbol-name type))))
-                        (when subject
-                          (insert (format " /%s/" subject)))
-                        (insert "\n")
+                    ;; Use a simple format without deep nesting
+                    (insert (format "*%s %s*" type-icon (capitalize (symbol-name type))))
+                    (when subject
+                      (insert (format " /%s/" subject)))
+                    (insert "\n")
 
-                        ;; Selected/highlighted text
-                        (when (and selected-text (not (string-empty-p selected-text)))
-                          (insert (format "#+BEGIN_QUOTE\n%s\n#+END_QUOTE\n" (string-trim selected-text))))
+                    ;; Selected/highlighted text
+                    (when (and selected-text (not (string-empty-p selected-text)))
+                      (insert (format "#+BEGIN_QUOTE\n%s\n#+END_QUOTE\n" (string-trim selected-text))))
 
-                        ;; Note content
-                        (when (and contents (not (string-empty-p contents)))
-                          (insert (format "\n%s\n" contents)))))
+                    ;; Note content
+                    (when (and contents (not (string-empty-p contents)))
+                      (insert (format "\n%s\n" contents)))
 
                     (insert "\n---\n\n")))))))))
     
@@ -222,15 +196,9 @@
                      (read-file-name "Save annotations to: " nil default-output nil
                                      (file-name-nondirectory default-output))))
          (all-annotations (pdf-annot-getannots))
-         ;; Filter to include 'text' type annotations and 'highlight' annotations with notes
+         ;; Filter to only include 'text' type annotations
          (annotations (cl-remove-if-not
-                       (lambda (annot)
-                         (let ((type (pdf-annot-get annot 'type))
-                               (contents (pdf-annot-get annot 'contents)))
-                           (or (eq type 'text)
-                               (and (eq type 'highlight)
-                                    contents
-                                    (not (string-empty-p contents))))))
+                       (lambda (annot) (eq (pdf-annot-get annot 'type) 'text))
                        all-annotations))
          (pdf-title (file-name-sans-extension (file-name-nondirectory pdf-file))))
 
@@ -277,44 +245,24 @@
                                     (t "📌"))))
 
                     ;; Try to get selected text for markup annotations
-                    ;; markup-edges is a list of edge lists (for multi-line selections)
-                    ;; We need to get text for each edge group and concatenate
                     (when markup-edges
-                      (condition-case err
-                          (with-current-buffer (find-file-noselect pdf-file)
-                            (setq selected-text
-                                  (mapconcat
-                                   (lambda (edges)
-                                     (pdf-info-gettext page edges 'word))
-                                   markup-edges
-                                   " ")))
-                        (error
-                         (message "Could not extract highlighted text: %s" (error-message-string err))
-                         (setq selected-text ""))))
+                      (condition-case nil
+                          (setq selected-text (pdf-info-gettext page markup-edges))
+                        (error (setq selected-text "[Could not extract text]"))))
 
-                    ;; For highlights with notes, use highlighted text as header
-                    (if (and (eq type 'highlight) contents (not (string-empty-p contents)))
-                        (progn
-                          ;; Use highlighted text as the header/title if extraction succeeded
-                          (if (and selected-text (not (string-empty-p selected-text)))
-                              (insert (format "**%s %s**\n\n" type-icon (string-trim selected-text)))
-                            (insert (format "**%s Highlight**\n\n" type-icon)))
-                          ;; Note content follows
-                          (insert (format "%s\n\n" contents)))
-                      ;; For regular text notes, use original format
-                      (progn
-                        (insert (format "**%s %s**" type-icon (capitalize (symbol-name type))))
-                        (when subject
-                          (insert (format " *%s*" subject)))
-                        (insert "\n\n")
+                    ;; Use markdown format
+                    (insert (format "**%s %s**" type-icon (capitalize (symbol-name type))))
+                    (when subject
+                      (insert (format " *%s*" subject)))
+                    (insert "\n\n")
 
-                        ;; Selected/highlighted text
-                        (when (and selected-text (not (string-empty-p selected-text)))
-                          (insert (format "> %s\n\n" (replace-regexp-in-string "\n" "\n> " (string-trim selected-text)))))
+                    ;; Selected/highlighted text
+                    (when (and selected-text (not (string-empty-p selected-text)))
+                      (insert (format "> %s\n\n" (replace-regexp-in-string "\n" "\n> " (string-trim selected-text)))))
 
-                        ;; Note content
-                        (when (and contents (not (string-empty-p contents)))
-                          (insert (format "%s\n\n" contents)))))
+                    ;; Note content
+                    (when (and contents (not (string-empty-p contents)))
+                      (insert (format "%s\n\n" contents)))
 
                     (insert "---\n\n")))))))))
 

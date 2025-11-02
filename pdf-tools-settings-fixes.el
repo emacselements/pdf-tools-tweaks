@@ -40,9 +40,9 @@
 
 ;; Navigation / buffer ops
 (define-key pdf-view-mode-map (kbd "g") nil)
-(define-key pdf-view-mode-map (kbd "g g") #'pdf-view-first-page)
-(define-key pdf-view-mode-map (kbd "G")   #'pdf-view-last-page)
-(define-key pdf-view-mode-map (kbd "e")   #'pdf-view-goto-page)
+;; (define-key pdf-view-mode-map (kbd "u") #'pdf-view-first-page)
+;; (define-key pdf-view-mode-map (kbd "G")   #'pdf-view-last-page)
+;; (define-key pdf-view-mode-map (kbd "e")   #'pdf-view-goto-page)
 (define-key pdf-view-mode-map (kbd "r")   #'pdf-view-revert-buffer)
 
 ;; Annotations
@@ -260,18 +260,59 @@ With prefix argument KILL, kill the buffer instead of just burying it."
 
 
 
-;;;; 5) Clipboard Timeout Tweak -------------------------------------------------
+;;;; 5) Annotation Tooltip Text Wrapping ----------------------------------------
+
+;; Set tooltip frame parameters to enable text wrapping with max width
+(setq tooltip-frame-parameters
+      '((name . "tooltip")
+        (internal-border-width . 2)
+        (border-width . 1)
+        (width . 80)))  ; Set max width in characters
+
+;; Advice to wrap text in tooltips for pdf-annot
+(defun pdf-annot-wrap-tooltip-text (text)
+  "Wrap TEXT to fit within tooltip width, keeping header and content on separate lines."
+  (with-temp-buffer
+    (let ((inhibit-read-only t))
+      (insert text)
+      ;; The annotation format is: "Header\nContent"
+      (goto-char (point-min))
+      (when (search-forward "\n" nil t)
+        (let ((header-end (1- (point)))
+              (content-start-pos (point)))
+          ;; Save the header with its properties and the content
+          (let ((header (buffer-substring (point-min) header-end))
+                (content (buffer-substring content-start-pos (point-max))))
+            ;; Clear buffer and rebuild
+            (erase-buffer)
+            ;; Insert header with its original formatting
+            (insert header)
+            (insert "\n")  ; Newline after header
+            ;; Insert content and wrap it
+            (when (> (length content) 0)
+              (let ((wrap-start (point)))
+                (insert content)
+                (let ((fill-column 80))
+                  (fill-region wrap-start (point-max))))))))
+      (buffer-string))))
+
+(advice-add 'pdf-annot-print-annotation :filter-return
+            (lambda (text)
+              (pdf-annot-wrap-tooltip-text text)))
+
+
+;;;; 6) Clipboard Timeout Tweak -------------------------------------------------
 
 (setq x-selection-timeout 10000) ; 10 seconds (default is often too short)
 
 
-;;;; 6) Export Annotations (external helper file) -------------------------------
+;;;; 7) Export Annotations (external helper file) -------------------------------
 
 (load-file (expand-file-name "pdf-export-annotations.el"
                              (file-name-directory load-file-name)))
 
 
-;;;; 7) Custom Annotation Types ("Mark", "Box", & "Green") ---------------------
+;;;; 8) Custom Annotation Types ("Mark", "Box", & "Green") ---------------------
 
 (with-eval-after-load 'pdf-annot
   (defcustom pdf-annot-mark-color "#8A2BE2" ; purple
@@ -313,10 +354,10 @@ With prefix argument KILL, kill the buffer instead of just burying it."
   ;; Keys for custom annotations
   (define-key pdf-view-mode-map (kbd ",") #'pdf-annot-add-mark-markup-annotation)
   (define-key pdf-view-mode-map (kbd "a") #'pdf-annot-add-box-markup-annotation)
-  (define-key pdf-view-mode-map (kbd ".") #'pdf-annot-add-green-markup-annotation))
+  (define-key pdf-view-mode-map (kbd "g") #'pdf-annot-add-green-markup-annotation))
 
 
-;;;; 8) Optional: Trim trailing whitespace on annot save -----------------------
+;;;; 9) Optional: Trim trailing whitespace on annot save -----------------------
 
 ;; Comment this advice out to disable automatic whitespace trimming.
 (advice-add 'pdf-annot-edit-contents-finalize :before
