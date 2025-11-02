@@ -13,6 +13,7 @@
 ;; - Return to last position before bookmark jump
 ;; - Rename bookmarks
 ;; - Delete bookmarks
+;; - Migrate bookmarks when files are renamed/moved
 ;; - Bookmarks stored per-file in ~/.emacs.d/pdf-bookmarks/
 ;;
 ;; Keybindings:
@@ -21,6 +22,7 @@
 ;;   ' l - Go back to Last position (before bookmark jump)
 ;;   ' r - Rename a bookmark
 ;;   ' d - Delete a bookmark
+;;   ' m - Migrate bookmarks from a renamed file
 ;;
 ;; To use this, add to your init.el:
 ;;   (require 'pdf-bookmarks)
@@ -50,6 +52,41 @@ This is a plist with :page and optionally :bookmark-name.")
   (unless (file-directory-p pdf-bookmarks-storage-directory)
     (make-directory pdf-bookmarks-storage-directory t)))
 
+(defun pdf-bookmarks-find-similar-files (target-basename)
+  "Find bookmark files similar to TARGET-BASENAME.
+Returns a list of (similarity-score . filepath) pairs, sorted by similarity."
+  (pdf-bookmarks-ensure-directory)
+  (let ((all-bookmark-files (directory-files pdf-bookmarks-storage-directory t "\\.bookmarks$"))
+        (candidates nil))
+    (dolist (file all-bookmark-files)
+      (let* ((basename (file-name-base file))
+             (score (pdf-bookmarks-similarity-score target-basename basename)))
+        (when (> score 0)
+          (push (cons score file) candidates))))
+    (sort candidates (lambda (a b) (> (car a) (car b))))))
+
+(defun pdf-bookmarks-similarity-score (str1 str2)
+  "Calculate similarity score between STR1 and STR2.
+Returns a score between 0 and 100, with higher being more similar."
+  (let* ((s1 (downcase str1))
+         (s2 (downcase str2))
+         (len1 (length s1))
+         (len2 (length s2))
+         (max-len (max len1 len2))
+         (min-len (min len1 len2)))
+    (if (= max-len 0)
+        100
+      ;; Calculate based on common substring and length difference
+      (let ((common-prefix-len (cl-loop for i from 0 below min-len
+                                        while (= (aref s1 i) (aref s2 i))
+                                        finally return i))
+            (common-suffix-len (cl-loop for i from 1 to min-len
+                                        while (= (aref s1 (- len1 i))
+                                                (aref s2 (- len2 i)))
+                                        finally return (1- i))))
+        (* 100 (/ (float (+ common-prefix-len common-suffix-len))
+                  max-len))))))
+
 (defun pdf-bookmarks-get-file-path ()
   "Get the bookmark file path for the current PDF."
   (when-let ((pdf-file (buffer-file-name)))
@@ -58,15 +95,34 @@ This is a plist with :page and optionally :bookmark-name.")
      (concat (file-name-base pdf-file) ".bookmarks")
      pdf-bookmarks-storage-directory)))
 
+(defun pdf-bookmarks-check-migration ()
+  "Check if bookmarks need migration from a renamed file.
+Returns the source file path if migration candidate found, nil otherwise."
+  (when-let* ((current-pdf (buffer-file-name))
+              (target-bookmark-file (pdf-bookmarks-get-file-path)))
+    (unless (file-exists-p target-bookmark-file)
+      ;; No bookmark file exists for current PDF
+      (let* ((current-basename (file-name-base current-pdf))
+             (similar-files (pdf-bookmarks-find-similar-files current-basename)))
+        (when (and similar-files
+                   (> (caar similar-files) 30)) ; Minimum 30% similarity
+          (cdar similar-files))))))
+
 (defun pdf-bookmarks-load ()
-  "Load bookmarks for the current PDF file."
+  "Load bookmarks for the current PDF file.
+If no bookmarks exist, check for migration candidates."
   (when-let ((bookmark-file (pdf-bookmarks-get-file-path)))
     (setq pdf-bookmarks-current-file-bookmarks
           (if (file-exists-p bookmark-file)
               (with-temp-buffer
                 (insert-file-contents bookmark-file)
                 (read (current-buffer)))
-            nil))))
+            ;; No bookmarks found - check for migration
+            (when-let ((migration-source (pdf-bookmarks-check-migration)))
+              (when (y-or-n-p (format "Found bookmarks from '%s'. Migrate to current file? "
+                                      (file-name-nondirectory migration-source)))
+                (pdf-bookmarks-migrate-from-file migration-source)
+                pdf-bookmarks-current-file-bookmarks))))))
 
 (defun pdf-bookmarks-save ()
   "Save bookmarks for the current PDF file."
@@ -260,38 +316,104 @@ and waits for you to navigate elsewhere before toggling."
   (interactive)
   (unless (eq major-mode 'pdf-view-mode)
     (error "Not in a PDF buffer"))
-  
+
   (let ((current-page (pdf-view-current-page))
         (current-file (buffer-file-name)))
-    
+
     (if (null pdf-bookmarks-last-position)
         ;; First time: save current position and inform user
         (progn
-          (setq pdf-bookmarks-last-position 
+          (setq pdf-bookmarks-last-position
                 (list :page current-page
                       :pdf-file current-file))
           (message "Position saved (page %d). Navigate elsewhere, then use ' l to return." current-page))
-      
+
       (let ((last-page (plist-get pdf-bookmarks-last-position :page))
             (last-file (plist-get pdf-bookmarks-last-position :pdf-file)))
-        
+
         ;; Check if we're in the same PDF file
         (if (not (equal last-file current-file))
-            (message "Last position was in a different PDF: %s" 
+            (message "Last position was in a different PDF: %s"
                      (file-name-nondirectory last-file))
-          
+
           ;; Check if we're already at the saved position
           (if (= current-page last-page)
               (message "Already at saved position (page %d)" current-page)
-            
+
             ;; Save current position before jumping
-            (setq pdf-bookmarks-last-position 
+            (setq pdf-bookmarks-last-position
                   (list :page current-page
                         :pdf-file current-file))
-            
+
             ;; Go back to the last position
             (pdf-view-goto-page last-page)
             (message nil)))))))
+
+(defun pdf-bookmarks-migrate-from-file (source-file)
+  "Migrate bookmarks from SOURCE-FILE to the current PDF.
+Creates a backup of the source file, then deletes the original."
+  (interactive
+   (list (completing-read "Migrate bookmarks from: "
+                          (directory-files pdf-bookmarks-storage-directory nil "\\.bookmarks$")
+                          nil t)))
+  (unless (eq major-mode 'pdf-view-mode)
+    (error "Not in a PDF buffer"))
+
+  ;; Handle interactive call with just filename vs programmatic call with full path
+  (let ((source-path (if (file-name-absolute-p source-file)
+                         source-file
+                       (expand-file-name source-file pdf-bookmarks-storage-directory))))
+
+    (unless (file-exists-p source-path)
+      (error "Source bookmark file does not exist: %s" source-path))
+
+    ;; Load bookmarks from source
+    (let ((migrated-bookmarks
+           (with-temp-buffer
+             (insert-file-contents source-path)
+             (read (current-buffer)))))
+
+      ;; Create backup of source file
+      (let ((backup-file (concat source-path ".bak")))
+        (copy-file source-path backup-file t))
+
+      ;; Delete the original source file
+      (delete-file source-path)
+
+      ;; Set and save to current PDF
+      (setq pdf-bookmarks-current-file-bookmarks migrated-bookmarks)
+      (pdf-bookmarks-save)
+
+      (message "Migrated %d bookmark(s) from %s (backup saved)"
+               (length migrated-bookmarks)
+               (file-name-nondirectory source-path)))))
+
+(defun pdf-bookmarks-migrate ()
+  "Interactively migrate bookmarks from a similar bookmark file.
+Shows top candidates based on filename similarity."
+  (interactive)
+  (unless (eq major-mode 'pdf-view-mode)
+    (error "Not in a PDF buffer"))
+
+  (let* ((current-basename (file-name-base (buffer-file-name)))
+         (similar-files (pdf-bookmarks-find-similar-files current-basename)))
+
+    (if (null similar-files)
+        (message "No bookmark files found to migrate from")
+
+      (let* ((choices (mapcar (lambda (item)
+                               (let ((score (car item))
+                                     (file (cdr item)))
+                                 (cons (format "%s (%.0f%% similar)"
+                                              (file-name-nondirectory file)
+                                              score)
+                                       file)))
+                             (cl-subseq similar-files 0 (min 5 (length similar-files)))))
+             (choice (completing-read "Migrate from: " (mapcar #'car choices) nil t))
+             (selected-file (cdr (assoc choice choices))))
+
+        (when selected-file
+          (pdf-bookmarks-migrate-from-file selected-file))))))
 
 
 ;;;; Keybindings ----------------------------------------------------------------
@@ -305,7 +427,8 @@ and waits for you to navigate elsewhere before toggling."
   (define-key pdf-view-mode-map (kbd "' g") #'pdf-bookmarks-access)
   (define-key pdf-view-mode-map (kbd "' l") #'pdf-bookmarks-back)
   (define-key pdf-view-mode-map (kbd "' r") #'pdf-bookmarks-rename)
-  (define-key pdf-view-mode-map (kbd "' d") #'pdf-bookmarks-delete))
+  (define-key pdf-view-mode-map (kbd "' d") #'pdf-bookmarks-delete)
+  (define-key pdf-view-mode-map (kbd "' m") #'pdf-bookmarks-migrate))
 
 
 (provide 'pdf-bookmarks)
