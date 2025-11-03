@@ -35,6 +35,7 @@ A simple, file-based bookmark system for PDF navigation. Bookmarks are stored pe
 - **Delete bookmark**: `' d` - Delete a bookmark, defaults to current page bookmark if available.
 - **Rename bookmark**: `' r` - Rename a bookmark with old name pre-filled, defaults to current page bookmark.
 - **Toggle back**: `' l` - Toggle between current position and last bookmark location.
+- **Migrate bookmarks**: `' m` - Migrate bookmarks from a renamed PDF file using fuzzy filename matching.
 
 ### Usage
 1. Ensure `pdf-bookmarks.el` is in the same directory as your other tweaks.
@@ -50,6 +51,7 @@ A simple, file-based bookmark system for PDF navigation. Bookmarks are stored pe
 - When on a bookmarked page, delete/rename operations default to that bookmark
 - Toggle-back saves your position before jumping, allowing easy return
 - All bookmark operations clear the minibuffer immediately after completion
+- **Migration:** When using bookmarks on a renamed PDF, you'll be prompted to migrate from similar files (30%+ similarity). The original bookmark file is backed up then deleted to prevent conflicts.
 
 ---
 ## Exporting Annotations (pdf-export-annotations.el)
@@ -78,7 +80,7 @@ This file provides commands to export PDF annotations to both org-mode and Markd
       - **Standard highlights:** `h` → yellow highlight, `~` → squiggly underline, `u` → underline, `s` → strikeout
       - **Custom highlights:** `,` → Mark (purple highlight), `a` → Box (orange squiggly), `.` → Green highlight
       - `C-c C-e` → export to org-mode, `C-c C-m` → export to Markdown, `C-c C-t` → export by type
-      - **Bookmarks:** `' b` → create, `' g` → go to, `' d` → delete, `' r` → rename, `' l` → toggle back
+      - **Bookmarks:** `' b` → create, `' g` → go to, `' d` → delete, `' r` → rename, `' l` → toggle back, `' m` → migrate
       - Removes or disables some default bindings for clarity.
 
 - **Annotation Bug Fixes:**
