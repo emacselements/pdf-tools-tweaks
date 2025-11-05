@@ -138,42 +138,13 @@
                 (buffer-name (pdf-annot-get-buffer pdf-annot-edit-contents--annotation))))
      (goto-char (point-max)))))
 
-;; ;; 3.4 UX: dynamic edit window height based on wrapped visual lines
-;; (defun pdf-annot-count-visual-lines (buffer window-width)
-;;   "Count visual lines in BUFFER accounting for wrapping at WINDOW-WIDTH."
-;;   (with-current-buffer buffer
-;;     (let ((total-lines 0))
-;;       (save-excursion
-;;         (goto-char (point-min))
-;;         (while (not (eobp))
-;;           (let* ((line-end (line-end-position))
-;;                  (line-text (buffer-substring-no-properties (point) line-end))
-;;                  (line-length (length line-text)))
-;;             (setq total-lines (+ total-lines
-;;                                  (max 1 (ceiling (/ (float line-length)
-;;                                                     (float (max 1 (- window-width 2))))))))
-;;             (forward-line 1))))
-;;       total-lines)))
-
-;; (defun pdf-annot-dynamic-window-height (a)
-;;   "Override `pdf-annot-edit-contents' to set dynamic window height for A."
-;;   (let* ((buffer (pdf-annot-edit-contents-noselect a))
-;;          (pdf-window-width (window-width (selected-window)))
-;;          (visual-lines (pdf-annot-count-visual-lines buffer pdf-window-width))
-;;          (desired-height (max 8 (+ visual-lines 4))) ; 3 padding + 1 header
-;;          (target-height (min 25 desired-height))
-;;          (win (select-window
-;;                (display-buffer
-;;                 buffer
-;;                 `((display-buffer-reuse-window
-;;                    display-buffer-split-below-and-attach)
-;;                   (inhibit-same-window . t)
-;;                   (window-height . ,target-height))))))
-;;     (with-selected-window win
-;;       (goto-char (point-min))
-;;       (set-window-start win (point-min) t)
-;;       (goto-char (point-max)))
-;;     win))
+;; 3.4 UX: increase edit window height
+;; Default is 0.25 (25% of frame), increased to 0.30 (30%) for longer notes
+(setq pdf-annot-edit-contents-display-buffer-action
+      '((display-buffer-reuse-window
+         display-buffer-split-below-and-attach)
+        (inhibit-same-window . t)
+        (window-height . 0.30)))
 
 ;; 3.5 Advices (override/around)
 (advice-add 'pdf-annot-edit-contents-commit       :override #'pdf-annot-edit-contents-commit-with-retry)
