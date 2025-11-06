@@ -139,12 +139,12 @@
      (goto-char (point-max)))))
 
 ;; 3.4 UX: increase edit window height
-;; Default is 0.25 (25% of frame), increased to 0.30 (30%) for longer notes
+;; Default is 0.25 (25% of frame), increased to 0.33 (33%) for longer notes
 (setq pdf-annot-edit-contents-display-buffer-action
       '((display-buffer-reuse-window
          display-buffer-split-below-and-attach)
         (inhibit-same-window . t)
-        (window-height . 0.30)))
+        (window-height . 0.33)))
 
 ;; 3.5 Advices (override/around)
 (advice-add 'pdf-annot-edit-contents-commit       :override #'pdf-annot-edit-contents-commit-with-retry)
