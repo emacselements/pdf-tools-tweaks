@@ -1,139 +1,163 @@
-## Demonstration Videos
+# PDF Tools Tweaks
+
+Custom fixes, enhancements, and usability tweaks for the [pdf-tools](https://github.com/politza/pdf-tools) package in Emacs, by Raoul Comninos.
+
+## 📹 Demonstration Videos
 
 Here are some videos demonstrating the features and usage of these tweaks:
 
-- [Emacs PDF-Tools Tips You Probably Don’t Know](https://youtu.be/rTtLu4QAT2I)
+- [Emacs PDF-Tools Tips You Probably Don't Know](https://youtu.be/rTtLu4QAT2I)
 - [Fix to Longstanding Pdf-Tools Bug](https://youtu.be/e8n31aylkNY)
 
-## Support & Donations
+## 💝 Support & Donations
 
 If you find this project helpful, consider supporting it!
 
 [Donate via PayPal](https://www.paypal.com/paypalme/revrari)
 
-# pdf-tools-tweaks
+## 📦 Included Files
 
-Custom fixes, enhancements, and usability tweaks for the [pdf-tools](https://github.com/politza/pdf-tools) package in Emacs, by Raoul Comninos.
+- **`pdf-tools-settings-fixes.el`**: Main tweaks, bugfixes, and usability improvements for pdf-tools
+- **`pdf-export-annotations.el`**: Export all or specific types of PDF annotations to org-mode and Markdown files
+- **`pdf-bookmarks.el`**: Simple bookmark system for PDFs with create, navigate, rename, delete, and toggle-back features
 
----
+## 🚀 Quick Start
 
-## Included Files
-
-- **pdf-tools-settings-fixes.el**: Main tweaks, bugfixes, and usability improvements for pdf-tools (see below).
-- **pdf-export-annotations.el**: Export all or specific types of PDF annotations to org-mode files from Emacs.
-- **pdf-bookmarks.el**: Simple bookmark system for PDFs with create, navigate, rename, delete, and toggle-back features.
-
----
-
-## PDF Bookmarks (pdf-bookmarks.el)
-
-A simple, file-based bookmark system for PDF navigation. Bookmarks are stored per-PDF in `~/.emacs.d/pdf-bookmarks/` and sorted by page number.
-
-### Features
-- **Create bookmark**: `' b` - Creates a bookmark on the current page with zero-padded page numbers for proper sorting.
-- **Go to bookmark**: `' g` - Shows sorted list of bookmarks, pre-selects current page bookmark if one exists.
-- **Delete bookmark**: `' d` - Delete a bookmark, defaults to current page bookmark if available.
-- **Rename bookmark**: `' r` - Rename a bookmark with old name pre-filled, defaults to current page bookmark.
-- **Toggle back**: `' l` - Toggle between current position and last bookmark location.
-- **Migrate bookmarks**: `' m` - Migrate bookmarks from a renamed PDF file using fuzzy filename matching.
-
-### Usage
-1. Ensure `pdf-bookmarks.el` is in the same directory as your other tweaks.
-2. Load it in your Emacs init file:
+1. Download all three `.el` files to your Emacs configuration directory (e.g., `~/.emacs.d/lisp/`)
+2. Add the following to your Emacs init file:
+   
    ```elisp
+   ;; Load the main tweaks file (this will auto-load the others)
+   (load "/path/to/pdf-tools-settings-fixes.el")
+   (require 'pdf-tools-settings-fixes)
+   
+   ;; Load bookmark system (optional but recommended)
    (load "/path/to/pdf-bookmarks.el")
    (require 'pdf-bookmarks)
    ```
-3. Use the keybindings above in any PDF buffer.
-
-### Notes
-- Bookmarks display as "Page 003 -- bookmark-name" for proper numerical sorting
-- When on a bookmarked page, delete/rename operations default to that bookmark
-- Toggle-back saves your position before jumping, allowing easy return
-- All bookmark operations clear the minibuffer immediately after completion
-- **Migration:** When using bookmarks on a renamed PDF, you'll be prompted to migrate from similar files (30%+ similarity). The original bookmark file is backed up then deleted to prevent conflicts.
-
----
-## Exporting Annotations (pdf-export-annotations.el)
-
-This file provides commands to export PDF annotations to both org-mode and Markdown formats, grouped by page and type, with icons and links back to the source PDF. It supports exporting all annotations or filtering by type (highlight, note, etc.).
-
-### Features
-- Export all annotations to org-mode: `M-x org-pdf-export-annotations-to-file` or `C-c C-e` in `pdf-view-mode`.
-- Export all annotations to Markdown: `M-x markdown-pdf-export-annotations-to-file` or `C-c C-m` in `pdf-view-mode`.
-- Export only a specific type of annotation: `M-x pdf-export-annotations-by-type` or `C-c C-t`.
-- Output includes headers, page grouping, icons, selected text, and annotation notes.
-
-### Usage
-1. Ensure `pdf-export-annotations.el` is in the same directory as your other tweaks.
-2. It is loaded automatically by `pdf-tools-settings-fixes.el` if present.
-3. Use the commands above in any PDF buffer.
-
----
-
-## Features and Fixes
-
-- **Keybinding Customization:**
-   - Remaps navigation and annotation keys for more efficient PDF reading and editing.
-      - `gg` → first page, `G` → last page, `e` → goto page, `r` → revert buffer
-      - `d` → delete annotation
-      - **Standard highlights:** `h` → yellow highlight, `~` → squiggly underline, `u` → underline, `s` → strikeout
-      - **Custom highlights:** `,` → Mark (purple highlight), `a` → Box (orange squiggly), `.` → Green highlight
-      - `C-c C-e` → export to org-mode, `C-c C-m` → export to Markdown, `C-c C-t` → export by type
-      - **Bookmarks:** `' b` → create, `' g` → go to, `' d` → delete, `' r` → rename, `' l` → toggle back, `' m` → migrate
-      - Removes or disables some default bindings for clarity.
-
-- **Annotation Bug Fixes:**
-   - Robust error handling for annotation editing and deletion:
-      - Automatically retries saving or deleting annotations if the annotation ID becomes stale ("No such annotation" error), refreshing the buffer and attempting again.
-      - Trims trailing whitespace before saving annotation edits.
-      - Ensures the cursor is positioned at the end of the annotation text when editing starts.
-
-- **Custom Annotation Types:**
-   - Adds new annotation types with customizable colors:
-      - **Mark**: Purple highlight for marking text (`,` key).
-      - **Box**: Orange squiggly underline for marking regions (`a` key).
-      - **Green**: Green highlight for marking text (`.` key).
-
-- **PDF Viewing Improvements:**
-   - Disables continuous scrolling by default.
-   - Sets zoom increment to 10% for easier scaling.
-   - Optionally enables midnight mode (commented out, easy to enable).
-
-- **Password and Place Memory:**
-   - Remembers all PDF passwords permanently.
-   - Remembers your last place in each PDF (requires `saveplace-pdf-view`).
-
-- **Clipboard Timeout Fix:**
-   - Increases X selection timeout to avoid clipboard errors with large selections.
-
-- **Smart Quit with Save Prompt:**
-   - When quitting a PDF buffer (using `q`, `Q`, or any quit-window command), if there are unsaved changes, you are prompted to save, discard, or cancel. This prevents accidental loss of annotation edits or other changes.
-   - Works for all quit methods, including keybindings and window management commands.
-
-## Usage
-1. Download or copy `pdf-tools-settings-fixes.el` to your Emacs configuration directory (e.g., `~/.emacs.d/lisp/`).
-2. Add the following to your Emacs init file:
    
-    ```elisp
-    (load "/path/to/pdf-tools-settings-fixes.el")
-    (require 'pdf-tools-settings-fixes)
-    ```
-    Replace `/path/to/` with the actual path where you saved the file.
+   Replace `/path/to/` with the actual path where you saved the files.
 
-3. Restart Emacs or reload your configuration.
+3. Restart Emacs or reload your configuration
 
-## Requirements
-- [pdf-tools](https://github.com/politza/pdf-tools)
-- `saveplace-pdf-view` (for place memory)
-- `qpdf` (for the invisible text fix)
-- `cl-lib` (for bookmark system, usually built-in)
-- `pdf-export-annotations.el` (for annotation export, optional)
-- `pdf-bookmarks.el` (for bookmark system, optional)
+## 🔖 PDF Bookmarks System
 
-## Customization
-You can further adjust keybindings, annotation colors, and other settings in the file to suit your workflow.
+A simple, file-based bookmark system for PDF navigation. Bookmarks are stored per-PDF in `~/.emacs.d/pdf-bookmarks/` and sorted by page number.
 
-## License
-This file is provided as-is, without warranty. You may use, modify, and distribute it freely.
+### ⌨️ Keybindings
+
+| Key | Action | Description |
+|-----|--------|-------------|
+| `' b` | Create bookmark | Creates a bookmark on the current page with zero-padded page numbers |
+| `' g` | Go to bookmark | Shows sorted list of bookmarks, pre-selects current page bookmark if exists |
+| `' d` | Delete bookmark | Delete a bookmark, defaults to current page bookmark if available |
+| `' r` | Rename bookmark | Rename a bookmark with old name pre-filled |
+| `' l` | Toggle back | Toggle between current position and last bookmark location |
+| `' m` | Migrate bookmarks | Migrate bookmarks from a renamed PDF file using fuzzy filename matching |
+
+### ✨ Features
+
+- **Smart naming**: Bookmarks display as "Page 003 -- bookmark-name" for proper numerical sorting
+- **Context awareness**: When on a bookmarked page, delete/rename operations default to that bookmark
+- **Position memory**: Toggle-back saves your position before jumping, allowing easy return
+- **Clean interface**: All bookmark operations clear the minibuffer immediately after completion
+- **Migration support**: When using bookmarks on a renamed PDF, you'll be prompted to migrate from similar files (30%+ similarity). The original bookmark file is backed up then deleted to prevent conflicts.
+
+## 📤 Annotation Export System
+
+Export PDF annotations to both org-mode and Markdown formats, grouped by page and type, with icons and links back to the source PDF.
+
+### ⌨️ Keybindings
+
+| Key | Action | Description |
+|-----|--------|-------------|
+| `C-c C-e` | Export to org-mode | Export all annotations to org-mode format |
+| `C-c C-m` | Export to Markdown | Export all annotations to Markdown format |
+| `C-c C-t` | Export by type | Export only specific annotation types |
+
+### ✨ Features
+
+- **Multiple formats**: Export to both org-mode and Markdown
+- **Type filtering**: Export all annotations or filter by specific types (highlight, note, etc.)
+- **Rich output**: Includes headers, page grouping, icons, selected text, and annotation notes
+- **Source linking**: Links back to the original PDF location
+- **Auto-loading**: Automatically loaded by `pdf-tools-settings-fixes.el` if present
+
+## ⚡ Core Features and Fixes
+
+### 🎯 Keybinding Customization
+
+Enhanced navigation and annotation keys for efficient PDF reading:
+
+#### Navigation & Buffer Operations
+| Key | Action | Description |
+|-----|--------|-------------|
+| `gg` | First page | Jump to the first page |
+| `G` | Last page | Jump to the last page |
+| `e` | Go to page | Navigate to specific page number |
+| `r` | Revert buffer | Refresh the PDF view |
+
+#### Annotation Operations
+| Key | Action | Description |
+|-----|--------|-------------|
+| `d` | Delete annotation | Remove the current annotation |
+| `h` | Yellow highlight | Add standard yellow highlight |
+| `~` | Squiggly underline | Add squiggly underline annotation |
+| `u` | Underline | Add underline annotation |
+| `s` | Strikeout | Add strikeout annotation |
+
+#### Custom Annotation Types
+| Key | Action | Color | Description |
+|-----|--------|-------|-------------|
+| `,` | Mark | Purple | Purple highlight for marking important text |
+| `a` | Box | Orange | Orange squiggly underline for marking regions |
+| `.` | Green highlight | Green | Green highlight for categorizing text |
+
+### 🔧 Robust Annotation Bug Fixes
+
+- **Automatic retry mechanism**: Handles "No such annotation" errors by refreshing buffer and retrying
+- **Text cleanup**: Automatically trims trailing whitespace before saving annotation edits
+- **Cursor positioning**: Ensures cursor is positioned at the end of annotation text when editing starts
+- **Error recovery**: Graceful handling of stale annotation IDs during editing and deletion
+
+### 🎨 PDF Viewing Improvements
+
+- **Discrete page scrolling**: Disables continuous scrolling by default for better page-by-page reading
+- **Optimal zoom increments**: Sets zoom to 10% increments for easier scaling
+- **Midnight mode ready**: Optional dark mode support (commented out, easy to enable)
+
+### 💾 Memory & State Management
+
+- **Password memory**: Remembers all PDF passwords permanently across sessions
+- **Place memory**: Remembers your last position in each PDF (requires `saveplace-pdf-view`)
+- **Smart quit**: Prompts to save unsaved changes when quitting PDF buffers
+
+### 🔧 Technical Fixes
+
+- **Clipboard timeout fix**: Increases X selection timeout to avoid clipboard errors with large text selections
+- **Invisible text handling**: Makes invisible text (3 Tr) visible for better accessibility
+
+## 📋 Requirements
+
+- **[pdf-tools](https://github.com/politza/pdf-tools)** - The base PDF viewing package for Emacs
+- **`saveplace-pdf-view`** - For remembering last position in PDFs
+- **`qpdf`** - For the invisible text visibility fix
+- **`cl-lib`** - For the bookmark system (usually built-in with Emacs)
+
+Optional components:
+- **`pdf-export-annotations.el`** - For annotation export functionality
+- **`pdf-bookmarks.el`** - For the bookmark system
+
+## 🔧 Customization
+
+All settings can be customized by modifying the `.el` files:
+
+- **Keybindings**: Modify the `define-key` statements in `pdf-tools-settings-fixes.el`
+- **Annotation colors**: Adjust color values in the custom annotation type definitions
+- **Zoom increments**: Change `pdf-view-resize-factor` value
+- **Bookmark storage**: Modify `pdf-bookmarks-dir` variable in `pdf-bookmarks.el`
+
+## 📄 License
+
+This project is provided as-is, without warranty. You may use, modify, and distribute it freely.
 
