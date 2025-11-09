@@ -62,6 +62,10 @@ A simple, file-based bookmark system for PDF navigation. Bookmarks are stored pe
 - **Position memory**: Toggle-back saves your position before jumping, allowing easy return
 - **Clean interface**: All bookmark operations clear the minibuffer immediately after completion
 - **Migration support**: When using bookmarks on a renamed PDF, you'll be prompted to migrate from similar files (30%+ similarity). The original bookmark file is backed up then deleted to prevent conflicts.
+- **Standard Emacs keybindings for annotations**:
+  - `C-x C-s` - Save annotation without closing (standard save behavior)
+  - `C-x 0` - Abort editing and close window (auto-deletes empty annotations)
+  - `C-c C-c` - Save annotation and close window
 
 ## 📤 Annotation Export System
 
