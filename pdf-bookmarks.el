@@ -15,6 +15,8 @@
 ;; - Delete bookmarks
 ;; - Migrate bookmarks when files are renamed/moved
 ;; - Bookmarks stored per-file in ~/.emacs.d/pdf-bookmarks/
+;; - C-x 0 aborts annotation editing and deletes empty annotations
+;; - C-x C-s saves annotation without closing (standard save behavior)
 ;;
 ;; Keybindings:
 ;;   ' b - Create bookmark at current page
@@ -23,6 +25,11 @@
 ;;   ' r - Rename a bookmark
 ;;   ' d - Delete a bookmark
 ;;   ' m - Migrate bookmarks from a renamed file
+;;
+;; Annotation editing:
+;;   C-x C-s - Save annotation changes (keeps window open)
+;;   C-x 0   - Abort editing and close window (deletes annotation if empty)
+;;   C-c C-c - Save annotation changes and close window
 ;;
 ;; To use this, add to your init.el:
 ;;   (require 'pdf-bookmarks)
@@ -414,6 +421,50 @@ Shows top candidates based on filename similarity."
 
         (when selected-file
           (pdf-bookmarks-migrate-from-file selected-file))))))
+
+
+;;;; PDF Annotation Window Keybindings -----------------------------------------
+
+(declare-function pdf-annot-edit-contents-abort "pdf-annot")
+(declare-function pdf-annot-edit-contents-commit "pdf-annot")
+(declare-function pdf-annot-edit-contents-save-annotation "pdf-annot")
+(declare-function pdf-annot-delete "pdf-annot")
+(declare-function pdf-annot-get "pdf-annot")
+
+(defun pdf-annot-save-annotation-contents ()
+  "Save the annotation contents without closing the edit buffer.
+This is the standard Emacs save behavior - save but keep editing."
+  (interactive)
+  (when (and (boundp 'pdf-annot-edit-contents-minor-mode)
+             pdf-annot-edit-contents-minor-mode)
+    (pdf-annot-edit-contents-save-annotation)))
+
+(defun pdf-annot-delete-window-and-abort ()
+  "Delete the annotation editing window and abort editing.
+If the annotation's original content is empty (or only whitespace),
+delete the annotation entirely. Otherwise, just abort the changes
+and close the window."
+  (interactive)
+  (when (and (boundp 'pdf-annot-edit-contents-minor-mode)
+             pdf-annot-edit-contents-minor-mode)
+    (let* ((current-annotation (and (boundp 'pdf-annot-edit-contents--annotation)
+                                    pdf-annot-edit-contents--annotation))
+           ;; Check the ORIGINAL annotation content, not the buffer content
+           (original-content (when current-annotation
+                              (or (pdf-annot-get current-annotation 'contents) "")))
+           (annotation-is-empty (string-empty-p (string-trim original-content))))
+      ;; First abort the editing (this closes the window)
+      (pdf-annot-edit-contents-abort)
+      ;; If the annotation's original content was empty, delete it
+      (when (and annotation-is-empty current-annotation)
+        (pdf-annot-delete current-annotation)))))
+
+;; Set up annotation editing keybindings
+(with-eval-after-load 'pdf-annot
+  (define-key pdf-annot-edit-contents-minor-mode-map (kbd "C-x 0")
+    #'pdf-annot-delete-window-and-abort)
+  (define-key pdf-annot-edit-contents-minor-mode-map (kbd "C-x C-s")
+    #'pdf-annot-save-annotation-contents))
 
 
 ;;;; Keybindings ----------------------------------------------------------------
