@@ -127,8 +127,7 @@
              pdf-annot-edit-contents--annotation)
     (goto-char (point-max))))
 
-;; HERE
-;; Ensure edit buffer shows point at end
+;; Ensure edit buffer uses markdown-mode and shows point at end
 (advice-add
  'pdf-annot-edit-contents-noselect :after
  (lambda (&rest _args)
@@ -136,6 +135,8 @@
        (get-buffer-create
         (format "*Edit Annotation %s*"
                 (buffer-name (pdf-annot-get-buffer pdf-annot-edit-contents--annotation))))
+     (unless (eq major-mode 'markdown-mode)
+       (markdown-mode))
      (goto-char (point-max)))))
 
 ;; 3.4 UX: increase edit window height
@@ -242,29 +243,40 @@ With prefix argument KILL, kill the buffer instead of just burying it."
 
 ;; Advice to wrap text in tooltips for pdf-annot
 (defun pdf-annot-wrap-tooltip-text (text)
-  "Wrap TEXT to fit within tooltip width, keeping header and content on separate lines."
+  "Wrap TEXT to fit within tooltip width, preserving line breaks."
   (with-temp-buffer
     (let ((inhibit-read-only t))
       (insert text)
       ;; The annotation format is: "Header\nContent"
       (goto-char (point-min))
-      (when (search-forward "\n" nil t)
-        (let ((header-end (1- (point)))
-              (content-start-pos (point)))
-          ;; Save the header with its properties and the content
-          (let ((header (buffer-substring (point-min) header-end))
-                (content (buffer-substring content-start-pos (point-max))))
-            ;; Clear buffer and rebuild
-            (erase-buffer)
-            ;; Insert header with its original formatting
-            (insert header)
-            (insert "\n")  ; Newline after header
-            ;; Insert content and wrap it
-            (when (> (length content) 0)
-              (let ((wrap-start (point)))
-                (insert content)
-                (let ((fill-column 80))
-                  (fill-region wrap-start (point-max))))))))
+      (if (search-forward "\n" nil t)
+          ;; Has header line
+          (let ((header-end (1- (point)))
+                (content-start-pos (point)))
+            ;; Save the header with its properties and the content
+            (let ((header (buffer-substring (point-min) header-end))
+                  (content (buffer-substring content-start-pos (point-max))))
+              ;; Clear buffer and rebuild
+              (erase-buffer)
+              ;; Insert header with its original formatting
+              (insert header)
+              (insert "\n")  ; Newline after header
+              ;; Insert content, wrapping each line separately to preserve line breaks
+              (when (> (length content) 0)
+                (let ((lines (split-string content "\n")))
+                  (let ((first t))
+                    (dolist (line lines)
+                      (unless first
+                        (insert "\n"))
+                      (setq first nil)
+                      (when (> (length line) 0)
+                        (let ((wrap-start (point)))
+                          (insert line)
+                          (let ((fill-column 80))
+                            (fill-region wrap-start (point)))))))))))
+        ;; No header, just process the whole text
+        (erase-buffer)
+        (insert text))
       (buffer-string))))
 
 (advice-add 'pdf-annot-print-annotation :filter-return

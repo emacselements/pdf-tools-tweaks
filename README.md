@@ -66,6 +66,8 @@ A simple, file-based bookmark system for PDF navigation. Bookmarks are stored pe
   - `C-x C-s` - Save annotation without closing (standard save behavior)
   - `C-x 0` - Abort editing and close window (auto-deletes empty annotations)
   - `C-c C-c` - Save annotation and close window
+- **Markdown mode for annotation editing**: Annotation buffers use markdown-mode for better editing experience
+- **Line break preservation**: Tooltips now preserve line breaks in multi-line annotations
 
 ## 📤 Annotation Export System
 
