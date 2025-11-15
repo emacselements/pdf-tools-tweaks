@@ -10,17 +10,24 @@
 ;; - Robust annotation edit/delete (handles stale IDs)
 ;; - Better edit buffer UX (cursor position + dynamic height)
 ;; - Smart quit with save prompt for unsaved changes
+;; - Disable SyncTeX mode (prevents vertical lines and errors)
 ;; - Save-place integration
-;; - Make invisible text (3 Tr) visible
+;; - Annotation tooltip text wrapping
 ;; - Clipboard timeout tweak
 ;; - Export annotations (external helper)
-;; - Custom annotation types ("Mark" & "Box")
+;; - Custom annotation types ("Mark", "Box" & "Green")
 ;; - Optional trailing-whitespace trim before saving annot text
 
 ;;; Code:
 
 
 ;;;; 1) Install & Base Settings -------------------------------------------------
+
+;; IMPORTANT: Remove pdf-sync-minor-mode from default enabled modes BEFORE installing
+;; This must happen before pdf-tools-install to prevent it from being enabled
+(with-eval-after-load 'pdf-tools
+  (setq pdf-tools-enabled-modes
+        (delq 'pdf-sync-minor-mode pdf-tools-enabled-modes)))
 
 (pdf-tools-install)
 (pdf-loader-install)
@@ -225,14 +232,47 @@ With prefix argument KILL, kill the buffer instead of just burying it."
                   (funcall orig-fun kill window)))))
 
 
-;;;; 4) Save Last Place in PDFs -------------------------------------------------
+;;;; 4) Disable SyncTeX Mode (prevents vertical lines and errors) ---------------
+
+;; Completely disable pdf-sync-minor-mode - only needed for LaTeX->PDF correlation
+;; This prevents vertical lines, synctex scanner errors, and mouse binding conflicts
+(with-eval-after-load 'pdf-sync
+  ;; Remove from hooks
+  (remove-hook 'pdf-view-mode-hook 'pdf-sync-minor-mode)
+
+  ;; Override the minor mode to do nothing (silently)
+  (defun pdf-sync-minor-mode (&optional arg)
+    "Disabled version of pdf-sync-minor-mode."
+    (interactive)
+    ;; Do nothing silently
+    nil)
+
+  ;; Disable the mouse bindings that trigger backward search
+  (define-key pdf-sync-minor-mode-map [double-mouse-1] nil)
+  (define-key pdf-sync-minor-mode-map [C-mouse-1] nil)
+
+  ;; Prevent backward-correlate from failing with nil filename
+  (advice-add 'pdf-sync-backward-correlate :around
+              (lambda (orig-fun x y)
+                "Prevent errors when synctex data is unavailable."
+                (condition-case err
+                    (let ((result (funcall orig-fun x y)))
+                      (if (car result) ; Check if source filename exists
+                          result
+                        (user-error "SyncTeX: No source location found")))
+                  (error
+                   (message "SyncTeX correlation failed (PDF not compiled with --synctex=1)")
+                   nil)))))
+
+
+;;;; 5) Save Last Place in PDFs -------------------------------------------------
 
 (require 'saveplace-pdf-view) ; external package
 (save-place-mode 1)
 
 
 
-;;;; 5) Annotation Tooltip Text Wrapping ----------------------------------------
+;;;; 6) Annotation Tooltip Text Wrapping ----------------------------------------
 
 ;; Set tooltip frame parameters to enable text wrapping with max width
 (setq tooltip-frame-parameters
@@ -284,18 +324,18 @@ With prefix argument KILL, kill the buffer instead of just burying it."
               (pdf-annot-wrap-tooltip-text text)))
 
 
-;;;; 6) Clipboard Timeout Tweak -------------------------------------------------
+;;;; 7) Clipboard Timeout Tweak -------------------------------------------------
 
 (setq x-selection-timeout 10000) ; 10 seconds (default is often too short)
 
 
-;;;; 7) Export Annotations (external helper file) -------------------------------
+;;;; 8) Export Annotations (external helper file) -------------------------------
 
 (load-file (expand-file-name "pdf-export-annotations.el"
                              (file-name-directory load-file-name)))
 
 
-;;;; 8) Custom Annotation Types ("Mark", "Box", & "Green") ---------------------
+;;;; 9) Custom Annotation Types ("Mark", "Box", & "Green") ---------------------
 
 (with-eval-after-load 'pdf-annot
   (defcustom pdf-annot-mark-color "#8A2BE2" ; purple
@@ -340,7 +380,7 @@ With prefix argument KILL, kill the buffer instead of just burying it."
   (define-key pdf-view-mode-map (kbd "g") #'pdf-annot-add-green-markup-annotation))
 
 
-;;;; 9) Optional: Trim trailing whitespace on annot save -----------------------
+;;;; 10) Optional: Trim trailing whitespace on annot save ----------------------
 
 ;; Comment this advice out to disable automatic whitespace trimming.
 (advice-add 'pdf-annot-edit-contents-finalize :before
