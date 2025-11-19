@@ -10,7 +10,7 @@
 ;; Features:
 ;; - Create bookmarks at current page (with custom names)
 ;; - Access/navigate to bookmarks via completion
-;; - Return to last position before bookmark jump
+;; - Navigate back to previous page (automatic history tracking)
 ;; - Rename bookmarks
 ;; - Delete bookmarks
 ;; - Migrate bookmarks when files are renamed/moved
@@ -21,7 +21,7 @@
 ;; Keybindings:
 ;;   ' b - Create bookmark at current page
 ;;   ' g - Access/navigate to (go to) bookmark
-;;   ' l - Go back to Last position (before bookmark jump)
+;;   ' l - Go back to Last page (automatically tracks page changes)
 ;;   ' r - Rename a bookmark
 ;;   ' d - Delete a bookmark
 ;;   ' m - Migrate bookmarks from a renamed file
@@ -51,8 +51,27 @@
   "Stores the last position before jumping to a bookmark.
 This is a plist with :page and optionally :bookmark-name.")
 
+(defvar pdf-bookmarks--previous-page nil
+  "Buffer-local variable to track the previous page number.")
+
 
 ;;;; Helper Functions -----------------------------------------------------------
+
+(defun pdf-bookmarks--track-page-change ()
+  "Track page changes for navigation history.
+Called after page changes to save the previous position."
+  (when (eq major-mode 'pdf-view-mode)
+    (let ((current-page (pdf-view-current-page))
+          (current-file (buffer-file-name)))
+      ;; If we have a previous page and it's different from current
+      (when (and pdf-bookmarks--previous-page
+                 (/= current-page pdf-bookmarks--previous-page))
+        ;; Save the PREVIOUS page as the last position
+        (setq pdf-bookmarks-last-position
+              (list :page pdf-bookmarks--previous-page
+                    :pdf-file current-file)))
+      ;; Update the previous page tracker
+      (setq pdf-bookmarks--previous-page current-page))))
 
 (defun pdf-bookmarks-ensure-directory ()
   "Ensure the bookmarks storage directory exists."
@@ -317,9 +336,7 @@ If no bookmarks exist, check for migration candidates."
             (message nil)))))))
 
 (defun pdf-bookmarks-back ()
-  "Toggle between current position and last saved position.
-On first use (before jumping to any bookmark), saves current position
-and waits for you to navigate elsewhere before toggling."
+  "Go back to the last page you were on before the most recent navigation."
   (interactive)
   (unless (eq major-mode 'pdf-view-mode)
     (error "Not in a PDF buffer"))
@@ -328,12 +345,8 @@ and waits for you to navigate elsewhere before toggling."
         (current-file (buffer-file-name)))
 
     (if (null pdf-bookmarks-last-position)
-        ;; First time: save current position and inform user
-        (progn
-          (setq pdf-bookmarks-last-position
-                (list :page current-page
-                      :pdf-file current-file))
-          (message "Position saved (page %d). Navigate elsewhere, then use ' l to return." current-page))
+        ;; No history yet
+        (message "No previous position to return to")
 
       (let ((last-page (plist-get pdf-bookmarks-last-position :page))
             (last-file (plist-get pdf-bookmarks-last-position :pdf-file)))
@@ -345,14 +358,9 @@ and waits for you to navigate elsewhere before toggling."
 
           ;; Check if we're already at the saved position
           (if (= current-page last-page)
-              (message "Already at saved position (page %d)" current-page)
+              (message "Already at previous position (page %d)" current-page)
 
-            ;; Save current position before jumping
-            (setq pdf-bookmarks-last-position
-                  (list :page current-page
-                        :pdf-file current-file))
-
-            ;; Go back to the last position
+            ;; Go back to the last position (tracking hook will update history)
             (pdf-view-goto-page last-page)
             (message nil)))))))
 
@@ -465,6 +473,22 @@ and close the window."
     #'pdf-annot-delete-window-and-abort)
   (define-key pdf-annot-edit-contents-minor-mode-map (kbd "C-x C-s")
     #'pdf-annot-save-annotation-contents))
+
+
+;;;; Setup and Hooks ------------------------------------------------------------
+
+(defun pdf-bookmarks--initialize-tracking ()
+  "Initialize page tracking for the current PDF buffer."
+  (when (eq major-mode 'pdf-view-mode)
+    (setq-local pdf-bookmarks--previous-page (pdf-view-current-page))))
+
+;; Set up hooks when pdf-view is loaded
+(with-eval-after-load 'pdf-view
+  ;; Initialize tracking when entering pdf-view-mode
+  (add-hook 'pdf-view-mode-hook #'pdf-bookmarks--initialize-tracking)
+
+  ;; Track page changes
+  (add-hook 'pdf-view-after-change-page-hook #'pdf-bookmarks--track-page-change))
 
 
 ;;;; Keybindings ----------------------------------------------------------------
