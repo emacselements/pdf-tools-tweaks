@@ -15,7 +15,8 @@
 ;; - Annotation tooltip text wrapping
 ;; - Clipboard timeout tweak
 ;; - Export annotations (external helper)
-;; - Custom annotation types ("Mark", "Box" & "Green")
+;; - Custom highlight colors (Yellow, Orange, Red, Pink, Green, Purple)
+;; - Custom strikeout colors (standard black, dark red)
 ;; - Optional trailing-whitespace trim before saving annot text
 
 ;;; Code:
@@ -47,18 +48,16 @@
 
 ;; Navigation / buffer ops
 (define-key pdf-view-mode-map (kbd "g") nil)
+(define-key pdf-view-mode-map (kbd "o") nil) ; Unset pdf-outline
+(define-key pdf-view-mode-map (kbd "x") nil) ; Unset any x binding
 ;; (define-key pdf-view-mode-map (kbd "u") #'pdf-view-first-page)
 ;; (define-key pdf-view-mode-map (kbd "G")   #'pdf-view-last-page)
 ;; (define-key pdf-view-mode-map (kbd "e")   #'pdf-view-goto-page)
-(define-key pdf-view-mode-map (kbd "r")   #'pdf-view-revert-buffer)
+(define-key pdf-view-mode-map (kbd "V")   #'pdf-view-revert-buffer)
 
 ;; Annotations
 ;; (define-key pdf-view-mode-map (kbd "a") #'pdf-annot-add-text-annotation)
 (define-key pdf-view-mode-map (kbd "d")   #'pdf-annot-delete)
-(define-key pdf-view-mode-map (kbd "h")   #'pdf-annot-add-highlight-markup-annotation)
-(define-key pdf-view-mode-map (kbd "~")   #'pdf-annot-add-squiggly-markup-annotation)
-(define-key pdf-view-mode-map (kbd "u")   #'pdf-annot-add-underline-markup-annotation)
-(define-key pdf-view-mode-map (kbd "s")   #'pdf-annot-add-strikeout-markup-annotation)
 
 
 ;;;; 3) Robust Annotation Editing (stale ID fix + UX) ---------------------------
@@ -350,6 +349,30 @@ With prefix argument KILL, kill the buffer instead of just burying it."
     "Color used for the custom green highlight annotation."
     :type 'color :group 'pdf-annot)
 
+  (defcustom pdf-annot-yellow-color "#FFFF00" ; true yellow
+    "Color used for the custom yellow highlight annotation."
+    :type 'color :group 'pdf-annot)
+
+  (defcustom pdf-annot-orange-color "#FFB300" ; orange
+    "Color used for the custom orange highlight annotation."
+    :type 'color :group 'pdf-annot)
+
+  (defcustom pdf-annot-red-color "#FF0000" ; red
+    "Color used for the custom red highlight annotation."
+    :type 'color :group 'pdf-annot)
+
+  (defcustom pdf-annot-pink-color "#FF69B4" ; hot pink
+    "Color used for the custom pink highlight annotation."
+    :type 'color :group 'pdf-annot)
+
+  (defcustom pdf-annot-red-strikeout-color "#8B0000" ; dark red
+    "Color used for the custom red strikeout annotation."
+    :type 'color :group 'pdf-annot)
+
+  (defcustom pdf-annot-red-underline-color "#FF0000" ; red
+    "Color used for the custom red underline annotation."
+    :type 'color :group 'pdf-annot)
+
   (defun pdf-annot-add-mark-markup-annotation (list-of-edges &optional pages)
     "Add a purple 'mark' (highlight) to LIST-OF-EDGES on PAGES."
     (interactive (list (pdf-view-active-region t)))
@@ -374,10 +397,69 @@ With prefix argument KILL, kill the buffer instead of just burying it."
      `((color . ,pdf-annot-green-color)
        (label . "Green"))))
 
-  ;; Keys for custom annotations
-  (define-key pdf-view-mode-map (kbd ",") #'pdf-annot-add-mark-markup-annotation)
-  (define-key pdf-view-mode-map (kbd "a") #'pdf-annot-add-box-markup-annotation)
-  (define-key pdf-view-mode-map (kbd "g") #'pdf-annot-add-green-markup-annotation))
+  (defun pdf-annot-add-yellow-markup-annotation (list-of-edges &optional pages)
+    "Add a yellow highlight to LIST-OF-EDGES on PAGES."
+    (interactive (list (pdf-view-active-region t)))
+    (pdf-annot-add-markup-annotation
+     list-of-edges 'highlight pages
+     `((color . ,pdf-annot-yellow-color)
+       (label . "Yellow"))))
+
+  (defun pdf-annot-add-orange-markup-annotation (list-of-edges &optional pages)
+    "Add an orange highlight to LIST-OF-EDGES on PAGES."
+    (interactive (list (pdf-view-active-region t)))
+    (pdf-annot-add-markup-annotation
+     list-of-edges 'highlight pages
+     `((color . ,pdf-annot-orange-color)
+       (label . "Orange"))))
+
+  (defun pdf-annot-add-red-markup-annotation (list-of-edges &optional pages)
+    "Add a red highlight to LIST-OF-EDGES on PAGES."
+    (interactive (list (pdf-view-active-region t)))
+    (pdf-annot-add-markup-annotation
+     list-of-edges 'highlight pages
+     `((color . ,pdf-annot-red-color)
+       (label . "Red"))))
+
+  (defun pdf-annot-add-pink-markup-annotation (list-of-edges &optional pages)
+    "Add a pink highlight to LIST-OF-EDGES on PAGES."
+    (interactive (list (pdf-view-active-region t)))
+    (pdf-annot-add-markup-annotation
+     list-of-edges 'highlight pages
+     `((color . ,pdf-annot-pink-color)
+       (label . "Pink"))))
+
+  (defun pdf-annot-add-red-strikeout-markup-annotation (list-of-edges &optional pages)
+    "Add a dark red strikeout to LIST-OF-EDGES on PAGES."
+    (interactive (list (pdf-view-active-region t)))
+    (pdf-annot-add-markup-annotation
+     list-of-edges 'strike-out pages
+     `((color . ,pdf-annot-red-strikeout-color)
+       (label . "Red Strikeout"))))
+
+  (defun pdf-annot-add-red-underline-markup-annotation (list-of-edges &optional pages)
+    "Add a red underline to LIST-OF-EDGES on PAGES."
+    (interactive (list (pdf-view-active-region t)))
+    (pdf-annot-add-markup-annotation
+     list-of-edges 'underline pages
+     `((color . ,pdf-annot-red-underline-color)
+       (label . "Red Underline"))))
+
+  ;; Keys for custom highlight annotations (two-letter combos starting with 'h')
+  (define-key pdf-view-mode-map (kbd "h h") #'pdf-annot-add-highlight-markup-annotation) ; standard yellow
+  (define-key pdf-view-mode-map (kbd "h y") #'pdf-annot-add-orange-markup-annotation)    ; orange (#FFB300)
+  (define-key pdf-view-mode-map (kbd "h o") #'pdf-annot-add-yellow-markup-annotation)    ; yellow (#FFFF00)
+  (define-key pdf-view-mode-map (kbd "h r") #'pdf-annot-add-red-markup-annotation)       ; red
+  (define-key pdf-view-mode-map (kbd "h i") #'pdf-annot-add-pink-markup-annotation)      ; pink (#FF69B4)
+  (define-key pdf-view-mode-map (kbd "h g") #'pdf-annot-add-green-markup-annotation)     ; green
+  (define-key pdf-view-mode-map (kbd "h m") #'pdf-annot-add-mark-markup-annotation)      ; purple/mark
+
+  ;; Other annotations
+  (define-key pdf-view-mode-map (kbd "s s") #'pdf-annot-add-strikeout-markup-annotation)        ; normal strikeout
+  (define-key pdf-view-mode-map (kbd "s x") #'pdf-annot-add-red-strikeout-markup-annotation)    ; dark red strikeout
+  (define-key pdf-view-mode-map (kbd "u u") #'pdf-annot-add-underline-markup-annotation)        ; regular underline
+  (define-key pdf-view-mode-map (kbd "u r") #'pdf-annot-add-red-underline-markup-annotation)    ; red underline
+  (define-key pdf-view-mode-map (kbd "u s") #'pdf-annot-add-squiggly-markup-annotation))        ; squiggly underline
 
 
 ;;;; 10) Optional: Trim trailing whitespace on annot save ----------------------
@@ -393,5 +475,50 @@ With prefix argument KILL, kill the buffer instead of just burying it."
                     (delete-char -1))))))
 
 
+;;;; 11) Print PDF Pages with Highlights Rendered -------------------------------
+
+(defun pdf-print-pages-with-highlights (pages)
+  "Print specific PAGES from current PDF with highlights fully rendered.
+PAGES can be a single page like '1807' or a range like '1807-1808'."
+  (interactive "sPage range to print (e.g., 1807 or 1807-1808): ")
+  (let ((pdf-file (buffer-file-name)))
+    (if (and pdf-file (file-exists-p pdf-file))
+        (let* ((temp-pdf (make-temp-file "pdf-print-rendered-" nil ".pdf"))
+               (first-page (if (string-match "^\\([0-9]+\\)" pages)
+                               (string-to-number (match-string 1 pages))
+                             (string-to-number pages)))
+               (last-page (if (string-match "-\\([0-9]+\\)$" pages)
+                              (string-to-number (match-string 1 pages))
+                            first-page))
+               (command (format "convert -density 300 %s[%d-%d] -quality 100 %s && lp %s"
+                                (shell-quote-argument pdf-file)
+                                (1- first-page) (1- last-page)
+                                (shell-quote-argument temp-pdf)
+                                (shell-quote-argument temp-pdf))))
+          (message "Rendering pages %s with highlights..." pages)
+          (shell-command command)
+          (run-at-time "30 sec" nil
+                       (lambda (file)
+                         (when (file-exists-p file)
+                           (delete-file file)))
+                       temp-pdf))
+      (message "No PDF file found for this buffer"))))
+
+(defun pdf-print-current-page-with-highlights ()
+  "Print current page with all highlights fully rendered."
+  (interactive)
+  (require 'pdf-view nil t)
+  (if (and (eq major-mode 'pdf-view-mode)
+           (fboundp 'pdf-view-current-page))
+      (let ((current-page (pdf-view-current-page)))
+        (pdf-print-pages-with-highlights (number-to-string current-page)))
+    (message "Not in a PDF view buffer")))
+
+;; ;; Keybindings for printing
+;; (with-eval-after-load 'pdf-view
+;;   (define-key pdf-view-mode-map (kbd "C-c p") #'pdf-print-current-page-with-highlights)
+;;   (define-key pdf-view-mode-map (kbd "C-c P") #'pdf-print-pages-with-highlights))
+
+
 (provide 'pdf-tools-settings-fixes)
 ;;; pdf-tools-settings-fixes.el ends here
