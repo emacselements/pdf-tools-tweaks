@@ -43,6 +43,14 @@
 (setq pdf-view-resize-factor 1.1)
 ;; (setq pdf-view-resize-factor 1.05) ; Use this for 5% steps.
 
+;; Make PDF background match your theme (adjust color as needed).
+(add-hook 'pdf-view-mode-hook
+          (lambda ()
+            (face-remap-add-relative 'default :background "#282828")))
+
+;; ;; Remove thin black border around PDF pages.
+;; (setq pdf-view-image-relief 0)
+
 
 ;;;; 2) Keybindings -------------------------------------------------------------
 
