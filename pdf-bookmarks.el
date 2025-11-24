@@ -14,6 +14,7 @@
 ;; - Rename bookmarks
 ;; - Delete bookmarks
 ;; - Migrate bookmarks when files are renamed/moved
+;; - Print current page or page ranges directly to printer
 ;; - Bookmarks stored per-file in ~/.emacs.d/pdf-bookmarks/
 ;; - C-x 0 aborts annotation editing and deletes empty annotations
 ;; - C-x C-s saves annotation without closing (standard save behavior)
@@ -25,11 +26,18 @@
 ;;   ' r - Rename a bookmark
 ;;   ' d - Delete a bookmark
 ;;   ' m - Migrate bookmarks from a renamed file
+;;   ' p - Print current page (extracts page and sends to printer)
+;;   ' P - Print page range (extracts pages and sends to printer)
 ;;
 ;; Annotation editing:
 ;;   C-x C-s - Save annotation changes (keeps window open)
 ;;   C-x 0   - Abort editing and close window (deletes annotation if empty)
 ;;   C-c C-c - Save annotation changes and close window
+;;
+;; Printing Requirements:
+;; - pdftocairo (install: sudo apt-get install poppler-utils)
+;; - ImageMagick convert (install: sudo apt-get install imagemagick)
+;; - lp command (CUPS printing system, standard on most Linux)
 ;;
 ;; To use this, add to your init.el:
 ;;   (require 'pdf-bookmarks)
@@ -431,6 +439,94 @@ Shows top candidates based on filename similarity."
           (pdf-bookmarks-migrate-from-file selected-file))))))
 
 
+;;;; Print Functions ------------------------------------------------------------
+
+(defun pdf-bookmarks-render-and-print-pages (pdf-file start-page end-page)
+  "Render pages START-PAGE to END-PAGE from PDF-FILE with highlights and send to printer.
+Uses pdftocairo to render pages at high resolution with all annotations visible,
+then converts to a properly sized PDF that fits the page when printed."
+  (let* ((temp-dir (make-temp-file "pdf-print-" t))
+         (temp-pdf (expand-file-name "output.pdf" temp-dir)))
+
+    ;; Check if required tools are available
+    (unless (executable-find "pdftocairo")
+      (error "pdftocairo not found. Install with: sudo apt-get install poppler-utils"))
+    (unless (executable-find "convert")
+      (error "ImageMagick convert not found. Install with: sudo apt-get install imagemagick"))
+
+    (unwind-protect
+        (progn
+          (message "Rendering pages %d-%d with highlights..." start-page end-page)
+
+          ;; Step 1: Render PDF pages at high resolution
+          ;; Render at 200 DPI for good quality
+          (let* ((png-prefix (expand-file-name "page" temp-dir))
+                 (render-cmd (format "pdftocairo -png -r 200 -f %d -l %d %s %s"
+                                   start-page end-page
+                                   (shell-quote-argument (expand-file-name pdf-file))
+                                   (shell-quote-argument png-prefix)))
+                 (render-result (shell-command-to-string (format "%s 2>&1" render-cmd))))
+
+            (unless (= (shell-command render-cmd) 0)
+              (error "Failed to render PDF pages: %s" render-result))
+
+            ;; Step 2: Convert PNG to PDF with proper A4 sizing
+            ;; A4 = 210x297mm. Use geometry to force exact dimensions
+            ;; -resize to fit within A4, then -extent to make exactly A4 size
+            (let* ((png-files (directory-files temp-dir t "page-.*\\.png$"))
+                   ;; A4 at 200 DPI = 1654x2339 pixels
+                   (convert-cmd (format "convert %s -resize 1654x2339 -background white -gravity center -extent 1654x2339 -density 200 -units PixelsPerInch %s"
+                                      (mapconcat #'shell-quote-argument
+                                               (sort png-files #'string<)
+                                               " ")
+                                      (shell-quote-argument temp-pdf)))
+                   (convert-result (shell-command-to-string (format "%s 2>&1" convert-cmd))))
+
+              (unless (= (shell-command convert-cmd) 0)
+                (error "Failed to convert images to PDF: %s" convert-result))
+
+              ;; Step 3: Send to printer with fit-to-page to ensure it fills A4
+              (if (file-exists-p temp-pdf)
+                  (progn
+                    (message "Sending pages %d-%d to printer..." start-page end-page)
+                    (let* ((print-cmd (format "lp -o fit-to-page -o media=A4 %s"
+                                            (shell-quote-argument temp-pdf)))
+                           (print-result (shell-command-to-string (format "%s 2>&1" print-cmd))))
+                      (if (string-match-p "request id" print-result)
+                          (message "Print job submitted: %s" (string-trim print-result))
+                        (error "Print failed: %s" print-result))))
+                (error "Failed to create printable PDF")))))
+
+      ;; Cleanup: Delete temp directory and all files
+      (when (file-directory-p temp-dir)
+        (delete-directory temp-dir t)))))
+
+(defun pdf-bookmarks-print-current-page ()
+  "Print the current PDF page with all highlights to the default printer.
+Renders the page with all annotations visible and sends it to the printer."
+  (interactive)
+  (unless (eq major-mode 'pdf-view-mode)
+    (error "Not in a PDF buffer"))
+  (let ((pdf-file (buffer-file-name))
+        (current-page (pdf-view-current-page)))
+    (if (and pdf-file (file-exists-p pdf-file))
+        (pdf-bookmarks-render-and-print-pages pdf-file current-page current-page)
+      (message "No PDF file found for this buffer"))))
+
+(defun pdf-bookmarks-print-pdf-range (start-page end-page)
+  "Print pages START-PAGE to END-PAGE with all highlights to the default printer.
+Renders the pages with all annotations visible and sends them to the printer."
+  (interactive
+   (list (read-number "Start page: " (pdf-view-current-page))
+         (read-number "End page: " (pdf-view-current-page))))
+  (unless (eq major-mode 'pdf-view-mode)
+    (error "Not in a PDF buffer"))
+  (let ((pdf-file (buffer-file-name)))
+    (if (and pdf-file (file-exists-p pdf-file))
+        (pdf-bookmarks-render-and-print-pages pdf-file start-page end-page)
+      (message "No PDF file found for this buffer"))))
+
+
 ;;;; PDF Annotation Window Keybindings -----------------------------------------
 
 (declare-function pdf-annot-edit-contents-abort "pdf-annot")
@@ -503,7 +599,9 @@ and close the window."
   (define-key pdf-view-mode-map (kbd "' l") #'pdf-bookmarks-back)
   (define-key pdf-view-mode-map (kbd "' r") #'pdf-bookmarks-rename)
   (define-key pdf-view-mode-map (kbd "' d") #'pdf-bookmarks-delete)
-  (define-key pdf-view-mode-map (kbd "' m") #'pdf-bookmarks-migrate))
+  (define-key pdf-view-mode-map (kbd "' m") #'pdf-bookmarks-migrate)
+  (define-key pdf-view-mode-map (kbd "' p") #'pdf-bookmarks-print-current-page)
+  (define-key pdf-view-mode-map (kbd "' P") #'pdf-bookmarks-print-pdf-range))
 
 
 (provide 'pdf-bookmarks)
