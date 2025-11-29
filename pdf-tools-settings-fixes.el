@@ -161,6 +161,30 @@
         (inhibit-same-window . t)
         (window-height . 0.33)))
 
+;; 3.4b Preserve zoom level when creating annotations
+;; Prevent pdf-view from auto-fitting when window size changes during annotation editing
+(defvar pdf-view--inhibit-redisplay nil
+  "When non-nil, inhibit automatic redisplay on window size changes.")
+
+(defun pdf-view--preserve-zoom-around-annotation (orig-fun &rest args)
+  "Prevent zoom changes when splitting window for annotation editing."
+  (let* ((pdf-view--inhibit-redisplay t)
+         (result (apply orig-fun args)))
+    result))
+
+;; Inhibit redisplay during window splitting for annotations
+(advice-add 'display-buffer-split-below-and-attach :around
+            #'pdf-view--preserve-zoom-around-annotation)
+
+;; Prevent automatic redisplay when window size changes during annotation editing
+(defun pdf-view--maybe-inhibit-redisplay (orig-fun &rest args)
+  "Only redisplay if not inhibited by annotation editing."
+  (unless pdf-view--inhibit-redisplay
+    (apply orig-fun args)))
+
+(advice-add 'pdf-view-redisplay-some-windows :around
+            #'pdf-view--maybe-inhibit-redisplay)
+
 ;; 3.5 Advices (override/around)
 (advice-add 'pdf-annot-edit-contents-commit       :override #'pdf-annot-edit-contents-commit-with-retry)
 (advice-add 'pdf-annot-delete                     :override #'pdf-annot-delete-with-retry)
@@ -466,7 +490,7 @@ With prefix argument KILL, kill the buffer instead of just burying it."
   (define-key pdf-view-mode-map (kbd "s s") #'pdf-annot-add-strikeout-markup-annotation)        ; normal strikeout
   (define-key pdf-view-mode-map (kbd "s x") #'pdf-annot-add-red-strikeout-markup-annotation)    ; dark red strikeout
   (define-key pdf-view-mode-map (kbd "u u") #'pdf-annot-add-underline-markup-annotation)        ; regular underline
-  (define-key pdf-view-mode-map (kbd "u r") #'pdf-annot-add-red-underline-markup-annotation)    ; red underline
+  (define-key pdf-view-mode-map (kbd "u y") #'pdf-annot-add-red-underline-markup-annotation)    ; red underline
   (define-key pdf-view-mode-map (kbd "u s") #'pdf-annot-add-squiggly-markup-annotation))        ; squiggly underline
 
 
