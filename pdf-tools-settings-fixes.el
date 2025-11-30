@@ -478,13 +478,13 @@ With prefix argument KILL, kill the buffer instead of just burying it."
   (define-key pdf-view-mode-map (kbd "h r") #'pdf-annot-add-red-markup-annotation)       ; red
   (define-key pdf-view-mode-map (kbd "h i") #'pdf-annot-add-pink-markup-annotation)      ; pink (#FF69B4)
   (define-key pdf-view-mode-map (kbd "h g") #'pdf-annot-add-green-markup-annotation)     ; green
-  (define-key pdf-view-mode-map (kbd "h m") #'pdf-annot-add-mark-markup-annotation)      ; purple/mark
+  (define-key pdf-view-mode-map (kbd ",") #'pdf-annot-add-mark-markup-annotation)        ; purple/mark
 
   ;; Other annotations
   (define-key pdf-view-mode-map (kbd "s s") #'pdf-annot-add-strikeout-markup-annotation)        ; normal strikeout
   (define-key pdf-view-mode-map (kbd "s x") #'pdf-annot-add-red-strikeout-markup-annotation)    ; dark red strikeout
   (define-key pdf-view-mode-map (kbd "u u") #'pdf-annot-add-underline-markup-annotation)        ; regular underline
-  (define-key pdf-view-mode-map (kbd "u r") #'pdf-annot-add-red-underline-markup-annotation)    ; red underline
+  (define-key pdf-view-mode-map (kbd "u y") #'pdf-annot-add-red-underline-markup-annotation)    ; red underline
   (define-key pdf-view-mode-map (kbd "u s") #'pdf-annot-add-squiggly-markup-annotation))        ; squiggly underline
 
 
