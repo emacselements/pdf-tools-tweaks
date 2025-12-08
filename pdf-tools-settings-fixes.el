@@ -24,6 +24,12 @@
 
 ;;;; 1) Install & Base Settings -------------------------------------------------
 
+;; Load pdf-tools from local directory
+(add-to-list 'load-path (expand-file-name "pdf-tools" (file-name-directory load-file-name)))
+
+;; Load the autoloads file (mimics what ELPA does)
+(load (expand-file-name "pdf-tools/pdf-tools-autoloads" (file-name-directory load-file-name)) nil t)
+
 ;; IMPORTANT: Remove pdf-sync-minor-mode from default enabled modes BEFORE installing
 ;; This must happen before pdf-tools-install to prevent it from being enabled
 (with-eval-after-load 'pdf-tools
@@ -31,7 +37,6 @@
         (delq 'pdf-sync-minor-mode pdf-tools-enabled-modes)))
 
 (pdf-tools-install)
-(pdf-loader-install)
 
 ;; Remember all PDF passwords permanently.
 (setq epdfinfo-cache-passwords t)
@@ -545,6 +550,9 @@ PAGES can be a single page like '1807' or a range like '1807-1808'."
 ;;   (define-key pdf-view-mode-map (kbd "C-c p") #'pdf-print-current-page-with-highlights)
 ;;   (define-key pdf-view-mode-map (kbd "C-c P") #'pdf-print-pages-with-highlights))
 
+;; Disable hex mode toggle in pdf-view-mode
+(with-eval-after-load 'pdf-view
+  (define-key pdf-view-mode-map (kbd "C-c C-x") nil))
 
 (provide 'pdf-tools-settings-fixes)
 ;;; pdf-tools-settings-fixes.el ends here
