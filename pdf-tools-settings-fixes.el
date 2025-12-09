@@ -554,5 +554,24 @@ PAGES can be a single page like '1807' or a range like '1807-1808'."
 (with-eval-after-load 'pdf-view
   (define-key pdf-view-mode-map (kbd "C-c C-x") nil))
 
+
+;;;; 9) Current-Page-Only Isearch ---------------------------------------------
+
+(defun pdf-isearch-forward-page-only (&optional regexp-p)
+  "Start isearch restricted to the current page.
+With prefix argument, search for regexp."
+  (interactive "P")
+  (setq-local pdf-isearch-narrow-to-page t)
+  (isearch-forward regexp-p)
+  ;; Reset after search completes
+  (add-hook 'isearch-mode-end-hook
+            (lambda () (setq-local pdf-isearch-narrow-to-page nil))
+            nil t))
+
+(with-eval-after-load 'pdf-view
+  ;; Bind C-u C-s to page-restricted search
+  (define-key pdf-view-mode-map (kbd "C-u C-s") #'pdf-isearch-forward-page-only))
+
+
 (provide 'pdf-tools-settings-fixes)
 ;;; pdf-tools-settings-fixes.el ends here

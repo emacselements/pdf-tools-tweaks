@@ -20,25 +20,44 @@ If you find this project helpful, consider supporting it!
 - **`pdf-tools-settings-fixes.el`**: Main tweaks, bugfixes, and usability improvements for pdf-tools
 - **`pdf-export-annotations.el`**: Export all or specific types of PDF annotations to org-mode and Markdown files
 - **`pdf-bookmarks.el`**: Simple bookmark system for PDFs with create, navigate, rename, delete, and toggle-back features
+- **`pdf-tools/`**: Local copy of pdf-tools package for integration with custom tweaks
 
 ## 🚀 Quick Start
 
-1. Download all three `.el` files to your Emacs configuration directory (e.g., `~/.emacs.d/lisp/`)
+### Option 1: Using the included pdf-tools directory
+
+1. Clone this repository to your Emacs configuration directory:
+   ```bash
+   cd ~/.emacs.d
+   git clone https://github.com/emacselements/pdf-tools-tweaks.git
+   ```
+
 2. Add the following to your Emacs init file:
-   
    ```elisp
-   ;; Load the main tweaks file (this will auto-load the others)
-   (load "/path/to/pdf-tools-settings-fixes.el")
+   ;; Load pdf-tools-settings-fixes (includes pdf-tools setup)
    (require 'pdf-tools-settings-fixes)
    
    ;; Load bookmark system (optional but recommended)
-   (load "/path/to/pdf-bookmarks.el")
    (require 'pdf-bookmarks)
-   ```
    
-   Replace `/path/to/` with the actual path where you saved the files.
+   ;; Load annotation export (optional)
+   (require 'pdf-export-annotations)
+   ```
 
-3. Restart Emacs or reload your configuration
+3. Restart Emacs
+
+### Option 2: Using pdf-tools from ELPA
+
+1. Download the `.el` files to your Emacs configuration directory (e.g., `~/.emacs.d/lisp/`)
+2. Install pdf-tools from MELPA: `M-x package-install RET pdf-tools RET`
+3. Add to your init file:
+   ```elisp
+   (require 'pdf-tools-settings-fixes)
+   (require 'pdf-bookmarks)
+   (require 'pdf-export-annotations)  ; optional
+   ```
+
+4. Restart Emacs or reload your configuration
 
 ## 🔖 PDF Bookmarks System
 
@@ -103,6 +122,12 @@ Enhanced navigation and annotation keys for efficient PDF reading:
 | `e` | Go to page | Navigate to specific page number |
 | `r` | Revert buffer | Refresh the PDF view |
 
+#### Search
+| Key | Action | Description |
+|-----|--------|-------------|
+| `C-s` | Search document | Search across all pages (standard isearch) |
+| `C-u C-s` | Search current page | Search only within the current page |
+
 #### Annotation Operations
 | Key | Action | Description |
 |-----|--------|-------------|
@@ -125,6 +150,12 @@ Enhanced navigation and annotation keys for efficient PDF reading:
 - **Text cleanup**: Automatically trims trailing whitespace before saving annotation edits
 - **Cursor positioning**: Ensures cursor is positioned at the end of annotation text when editing starts
 - **Error recovery**: Graceful handling of stale annotation IDs during editing and deletion
+
+### 🔍 Enhanced Search Features
+
+- **Page-restricted search**: Use `C-u C-s` to search only within the current page
+- **Automatic restriction reset**: Search restriction is automatically cleared after the search ends
+- **Standard isearch integration**: Works seamlessly with Emacs' built-in isearch functionality
 
 ### 🎨 PDF Viewing Improvements
 
