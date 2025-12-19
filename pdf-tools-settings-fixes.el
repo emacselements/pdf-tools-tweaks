@@ -9,6 +9,7 @@
 ;; - Keybindings
 ;; - Robust annotation edit/delete (handles stale IDs)
 ;; - Better edit buffer UX (cursor position + dynamic height)
+
 ;; - Smart quit with save prompt for unsaved changes
 ;; - Disable SyncTeX mode (prevents vertical lines and errors)
 ;; - Save-place integration
@@ -129,14 +130,14 @@
                    (dolist (annot current-annots)
                      (when (equal (pdf-annot-get annot 'edges) edges)
                        (setq found-annot annot)
-                       (throw 'found annot)))))
+                       (throw 'found annot))))))
                (if found-annot
                    (progn
                      (pdf-info-delannot (pdf-annot-get-id found-annot))
                      (set-buffer-modified-p t)
                      (pdf-annot-run-modified-hooks :delete found-annot)
                      (message "Annotation deleted after buffer refresh"))
-                 (message "Could not find annotation to delete - it may have already been removed")))))
+                 (message "Could not find annotation to delete - it may have already been removed"))))
        (error "Failed to delete annotation: %s" (error-message-string err))))))
 
 ;; 3.3 UX: position cursor at end when starting to edit

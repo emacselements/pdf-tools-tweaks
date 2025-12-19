@@ -1,6 +1,6 @@
 # PDF Tools Tweaks
 
-Custom fixes, enhancements, and usability tweaks for the [pdf-tools](https://github.com/politza/pdf-tools) package in Emacs, by Raoul Comninos.
+Custom fixes, enhancements, and usability tweaks for the [pdf-tools](https://github.com/politza/pdf-tools) package in Emacs.
 
 ## 📹 Demonstration Videos
 
