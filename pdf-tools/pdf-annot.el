@@ -1439,7 +1439,7 @@ annotation's contents and otherwise `org-mode'."
   '((display-buffer-reuse-window
      display-buffer-split-below-and-attach)
     (inhibit-same-window . t)
-    (window-height . 0.25))
+    (window-height . 0.4))
   "Display action when showing the edit buffer."
   :type display-buffer--action-custom-type)
 
